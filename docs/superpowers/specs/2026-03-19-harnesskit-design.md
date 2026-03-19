@@ -33,9 +33,23 @@ HarnessKit은 vibe coder를 위한 Claude Code Plugin이다. 기존 Harness Engi
 
 Claude Code Plugin 공식 형태 — `claude plugin install harnesskit`으로 설치
 
-### 1.5 외부 위임 전략
+### 1.5 외부 위임 전략 — "Curate, Don't Reinvent"
 
-코드 리뷰는 초기에 marketplace의 검증된 플러그인에 위임 (`/simplify`, `/review`, `/security-review` 등). `/harnesskit:insights`가 사용 패턴을 관찰하며 점진적으로 내재화.
+HarnessKit의 핵심 원칙: **이미 검증된 marketplace plugin이 있으면 그것을 사용한다.** HarnessKit은 바퀴를 재발명하지 않고, repo에 맞는 최적의 도구를 **선택 → 구성 → 관찰 → 개선**하는 오케스트레이터 역할에 집중한다.
+
+이 원칙은 모든 영역에 적용된다:
+
+| 영역 | 기존 강력 plugin 있음 | 없거나 부족함 |
+|------|---------------------|-------------|
+| **Skills** | marketplace skill 설치 추천 + repo 맞춤 설정 | `/skill-builder`로 생성 |
+| **Code Review** | `/simplify`, `/review`, `/security-review` 등 추천 | 자체 생성하지 않음 (v2에서 내재화 검토) |
+| **Hooks** | marketplace hook plugin 있으면 추천 | seed 템플릿 기반 생성 |
+| **Agents** | marketplace agent 있으면 추천 | 템플릿 기반 설치 (v2에서 `/skill-builder` 생성) |
+| **Commands** | marketplace 명령어 있으면 추천 | 자체 dev command 제공 |
+
+`/harnesskit:insights`가 사용 패턴을 관찰하며:
+- 기존 plugin이 프로젝트에 맞지 않으면 → 설정 조정 또는 대안 plugin 추천
+- marketplace에 적합한 plugin이 없는 영역만 → 자체 생성/내재화 검토
 
 ### 1.6 버전 로드맵
 
@@ -664,16 +678,40 @@ Shell 스크립트로 파일 읽기만 수행 (토큰 최소):
 
 Harness Engineering의 본체는 인프라(feature_list, progress, failures)가 아니라 **실제 코딩을 돕는 skills, hooks, agents, commands**다. HarnessKit은 repo 감지 결과에 따라 이 toolkit을 자동 생성한다.
 
-### 9.1 Setup 시 생성되는 Toolkit 전체
+### 9.1 Setup 시 Toolkit 구성 — "Curate First, Create Second"
+
+모든 영역에서 **marketplace에 검증된 plugin이 있으면 먼저 추천**하고, 없는 영역만 자체 생성한다:
 
 ```
 /harnesskit:setup (Next.js + TypeScript + Vitest 감지)
   │
-  ├── [A] Skills 자동 생성 (템플릿 기반, 토큰 0)
-  ├── [B] Dev Hooks 자동 구성 (settings.json에 등록)
-  ├── [C] Dev Commands 자동 등록 (skill로 구현)
-  ├── [D] Marketplace 플러그인 추천 (사용자 선택)
-  └── [E] Agent 추천 + 선택 설치 (템플릿 기반)
+  ├── [A] Skills
+  │     ├─ marketplace에 해당 프레임워크 skill plugin 있는가?
+  │     │    ├─ Yes → 설치 추천 + repo 맞춤 설정 안내
+  │     │    └─ No  → /skill-builder로 seed 기반 생성
+  │     └─ 공통 skill (git-workflow, code-style)은 /skill-builder로 생성
+  │
+  ├── [B] Dev Hooks
+  │     ├─ marketplace에 lint/typecheck hook plugin 있는가?
+  │     │    ├─ Yes → 설치 추천
+  │     │    └─ No  → seed 템플릿 기반 생성
+  │     └─ harness 전용 hooks (session-start, guardrails, session-end)는 항상 자체
+  │
+  ├── [C] Dev Commands
+  │     ├─ marketplace에 test/lint 명령어 plugin 있는가?
+  │     │    ├─ Yes → 추천 (단, failures.json 연동은 자체 래핑)
+  │     │    └─ No  → 자체 skill로 제공
+  │     └─ HarnessKit 연동 래핑: marketplace 명령어를 감싸서 failures.json 기록 추가
+  │
+  ├── [D] Code Review / Security
+  │     └─ 항상 marketplace 추천 (/simplify, /review, /security-review 등)
+  │        자체 구현하지 않음
+  │
+  └── [E] Agents
+        ├─ marketplace에 planner/reviewer/researcher agent 있는가?
+        │    ├─ Yes → 설치 추천
+        │    └─ No  → 템플릿 기반 설치 (사용자 선택)
+        └─ v2: /skill-builder로 프로젝트 맞춤 agent 생성
 ```
 
 ### 9.2 [A] Repo 맞춤 Skills 생성 — `/skill-builder` 활용
