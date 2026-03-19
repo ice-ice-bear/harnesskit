@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+htmlcov/
+*.egg-info/
+.harnesskit/session-logs/
+.harnesskit/backup/

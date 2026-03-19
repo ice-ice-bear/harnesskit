@@ -1,0 +1,2 @@
+.harnesskit/session-logs/
+.harnesskit/backup/
