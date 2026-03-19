@@ -5,6 +5,9 @@
   "skills": [
     "skills/setup.md",
     "skills/init.md",
+    "skills/insights.md",
+    "skills/apply.md",
+    "skills/status.md",
     "skills/test.md",
     "skills/lint.md",
     "skills/typecheck.md",
