@@ -1,0 +1,11 @@
+{
+  "name": "harnesskit",
+  "version": "0.1.0",
+  "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
+  "skills": [
+    "skills/setup.md"
+  ],
+  "agents": [
+    "agents/orchestrator.md"
+  ]
+}
