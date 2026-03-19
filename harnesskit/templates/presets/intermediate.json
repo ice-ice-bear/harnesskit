@@ -1,0 +1,23 @@
+{
+  "name": "intermediate",
+  "description": "Balanced guardrails, concise briefings, moderate automation",
+  "guardrails": {
+    "sudo": "BLOCK",
+    "rm_rf_dangerous": "BLOCK",
+    "env_write": "BLOCK",
+    "git_push_force": "BLOCK",
+    "git_reset_hard": "WARN",
+    "npm_publish": "WARN",
+    "test_skip": "PASS"
+  },
+  "briefing": "summary",
+  "featureListGranularity": "medium",
+  "sessionEndReminder": "notify",
+  "insightsNudgeThreshold": 3,
+  "claudeMdDetail": "concise",
+  "devHooks": {
+    "postEditLint": true,
+    "postEditTypecheck": true,
+    "preCommitTest": false
+  }
+}

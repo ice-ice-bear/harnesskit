@@ -1,0 +1,23 @@
+{
+  "name": "advanced",
+  "description": "Minimal guardrails, one-line briefings, maximum autonomy",
+  "guardrails": {
+    "sudo": "BLOCK",
+    "rm_rf_dangerous": "BLOCK",
+    "env_write": "WARN",
+    "git_push_force": "WARN",
+    "git_reset_hard": "PASS",
+    "npm_publish": "PASS",
+    "test_skip": "PASS"
+  },
+  "briefing": "minimal",
+  "featureListGranularity": "large",
+  "sessionEndReminder": "silent",
+  "insightsNudgeThreshold": 5,
+  "claudeMdDetail": "minimal",
+  "devHooks": {
+    "postEditLint": false,
+    "postEditTypecheck": false,
+    "preCommitTest": false
+  }
+}

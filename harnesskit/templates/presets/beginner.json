@@ -1,0 +1,23 @@
+{
+  "name": "beginner",
+  "description": "Strong guardrails, detailed briefings, maximum error protection",
+  "guardrails": {
+    "sudo": "BLOCK",
+    "rm_rf_dangerous": "BLOCK",
+    "env_write": "BLOCK",
+    "git_push_force": "BLOCK",
+    "git_reset_hard": "BLOCK",
+    "npm_publish": "BLOCK",
+    "test_skip": "WARN"
+  },
+  "briefing": "detailed",
+  "featureListGranularity": "small",
+  "sessionEndReminder": "force",
+  "insightsNudgeThreshold": 2,
+  "claudeMdDetail": "full",
+  "devHooks": {
+    "postEditLint": true,
+    "postEditTypecheck": true,
+    "preCommitTest": true
+  }
+}
