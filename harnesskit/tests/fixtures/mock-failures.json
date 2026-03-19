@@ -1,0 +1,16 @@
+{
+  "failures": [
+    {
+      "id": "fail-001",
+      "firstSeen": "2026-03-16",
+      "lastSeen": "2026-03-18",
+      "occurrences": 3,
+      "feature": "feat-002",
+      "pattern": "TypeError: Cannot read property 'id' of undefined",
+      "files": ["src/api/signup.ts"],
+      "rootCause": null,
+      "prevention": null,
+      "status": "open"
+    }
+  ]
+}

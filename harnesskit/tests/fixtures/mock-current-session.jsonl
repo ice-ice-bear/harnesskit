@@ -1,0 +1,3 @@
+{"type":"error","pattern":"TypeError: Cannot read property 'id' of undefined","file":"src/api/signup.ts"}
+{"type":"error","pattern":"TypeError: Cannot read property 'id' of undefined","file":"src/api/signup.ts"}
+{"type":"feature_fail","id":"feat-002"}

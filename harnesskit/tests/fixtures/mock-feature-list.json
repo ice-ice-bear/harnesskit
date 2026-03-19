@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "features": [
+    {"id": "feat-001", "description": "Login form", "passes": true},
+    {"id": "feat-002", "description": "Signup API", "passes": false},
+    {"id": "feat-003", "description": "Profile page", "passes": false}
+  ]
+}

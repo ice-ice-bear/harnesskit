@@ -1,0 +1,9 @@
+# Session 3
+## Completed
+- feat-001: Login form implemented and tested
+## Currently broken
+- Nothing
+## Next session
+- feat-002: Signup API
+## Notes
+- Using Pydantic v2 schema validation
