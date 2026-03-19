@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
   "skills": [
-    "skills/setup.md"
+    "skills/setup.md",
+    "skills/init.md",
+    "skills/test.md",
+    "skills/lint.md",
+    "skills/typecheck.md",
+    "skills/dev.md"
   ],
   "agents": [
     "agents/orchestrator.md"
