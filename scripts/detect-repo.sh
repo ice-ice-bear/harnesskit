@@ -5,11 +5,40 @@ set -euo pipefail
 
 PROJECT_DIR="${1:-.}"
 
+# --- Monorepo subdirectory scanning ---
+# Check root first, then common subdirectories (backend/, frontend/, server/, client/, app/, src/)
+find_file() {
+  local filename="$1"
+  if [ -f "$PROJECT_DIR/$filename" ]; then
+    echo "$PROJECT_DIR/$filename"
+    return 0
+  fi
+  for sub in backend server api frontend client app web src; do
+    if [ -f "$PROJECT_DIR/$sub/$filename" ]; then
+      echo "$PROJECT_DIR/$sub/$filename"
+      return 0
+    fi
+  done
+  return 1
+}
+
+grep_file() {
+  local pattern="$1" filename="$2"
+  local found
+  found=$(find_file "$filename" 2>/dev/null) || return 1
+  grep -qi "$pattern" "$found" 2>/dev/null
+}
+
 # --- Language & Package Manager ---
 language="unknown"
 packageManager="unknown"
 
-if [ -f "$PROJECT_DIR/package.json" ]; then
+PACKAGE_JSON=$(find_file "package.json" 2>/dev/null || echo "")
+TSCONFIG=$(find_file "tsconfig.json" 2>/dev/null || echo "")
+REQUIREMENTS=$(find_file "requirements.txt" 2>/dev/null || echo "")
+PYPROJECT=$(find_file "pyproject.toml" 2>/dev/null || echo "")
+
+if [ -n "$PACKAGE_JSON" ]; then
   language="javascript"
   if [ -f "$PROJECT_DIR/pnpm-lock.yaml" ]; then
     packageManager="pnpm"
@@ -20,11 +49,11 @@ if [ -f "$PROJECT_DIR/package.json" ]; then
   else
     packageManager="npm"
   fi
-  if [ -f "$PROJECT_DIR/tsconfig.json" ] || \
-     ([ -f "$PROJECT_DIR/package.json" ] && jq -e '.devDependencies.typescript // .dependencies.typescript' "$PROJECT_DIR/package.json" >/dev/null 2>&1); then
+  if [ -n "$TSCONFIG" ] || \
+     ([ -n "$PACKAGE_JSON" ] && jq -e '.devDependencies.typescript // .dependencies.typescript' "$PACKAGE_JSON" >/dev/null 2>&1); then
     language="typescript"
   fi
-elif [ -f "$PROJECT_DIR/requirements.txt" ] || [ -f "$PROJECT_DIR/pyproject.toml" ] || [ -f "$PROJECT_DIR/setup.py" ]; then
+elif [ -n "$REQUIREMENTS" ] || [ -n "$PYPROJECT" ] || [ -f "$PROJECT_DIR/setup.py" ]; then
   language="python"
   if [ -f "$PROJECT_DIR/poetry.lock" ]; then
     packageManager="poetry"
@@ -43,45 +72,65 @@ elif [ -f "$PROJECT_DIR/Cargo.toml" ]; then
   packageManager="cargo"
 fi
 
+# Detect multi-language (monorepo with both backend+frontend)
+if [ -n "$PACKAGE_JSON" ] && [ -n "$REQUIREMENTS" ]; then
+  language="multi"
+fi
+
 # --- Framework ---
 framework="unknown"
 
-if [ -f "$PROJECT_DIR/next.config.js" ] || [ -f "$PROJECT_DIR/next.config.mjs" ] || [ -f "$PROJECT_DIR/next.config.ts" ]; then
+if find_file "next.config.js" >/dev/null 2>&1 || find_file "next.config.mjs" >/dev/null 2>&1 || find_file "next.config.ts" >/dev/null 2>&1; then
   framework="nextjs"
-elif [ -f "$PROJECT_DIR/vite.config.js" ] || [ -f "$PROJECT_DIR/vite.config.ts" ] || [ -f "$PROJECT_DIR/vite.config.mjs" ]; then
+elif find_file "vite.config.js" >/dev/null 2>&1 || find_file "vite.config.ts" >/dev/null 2>&1 || find_file "vite.config.mjs" >/dev/null 2>&1; then
   framework="vite"
-elif [ -f "$PROJECT_DIR/nuxt.config.js" ] || [ -f "$PROJECT_DIR/nuxt.config.ts" ]; then
+elif find_file "nuxt.config.js" >/dev/null 2>&1 || find_file "nuxt.config.ts" >/dev/null 2>&1; then
   framework="nuxt"
-elif [ -f "$PROJECT_DIR/svelte.config.js" ]; then
+elif find_file "svelte.config.js" >/dev/null 2>&1; then
   framework="sveltekit"
 fi
 
-if [ "$language" = "python" ]; then
-  if [ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "fastapi" "$PROJECT_DIR/requirements.txt" 2>/dev/null; then
-    framework="fastapi"
-  elif [ -f "$PROJECT_DIR/pyproject.toml" ] && grep -qi "fastapi" "$PROJECT_DIR/pyproject.toml" 2>/dev/null; then
-    framework="fastapi"
-  elif [ -f "$PROJECT_DIR/manage.py" ] || ([ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "django" "$PROJECT_DIR/requirements.txt" 2>/dev/null); then
-    framework="django"
-  elif [ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "flask" "$PROJECT_DIR/requirements.txt" 2>/dev/null; then
-    framework="flask"
+if [ "$language" = "python" ] || [ "$language" = "multi" ]; then
+  if grep_file "fastapi" "requirements.txt" || grep_file "fastapi" "pyproject.toml"; then
+    if [ "$framework" != "unknown" ]; then
+      framework="$framework+fastapi"
+    else
+      framework="fastapi"
+    fi
+  elif [ -f "$PROJECT_DIR/manage.py" ] || grep_file "django" "requirements.txt"; then
+    if [ "$framework" != "unknown" ]; then
+      framework="$framework+django"
+    else
+      framework="django"
+    fi
+  elif grep_file "flask" "requirements.txt"; then
+    if [ "$framework" != "unknown" ]; then
+      framework="$framework+flask"
+    else
+      framework="flask"
+    fi
   fi
 fi
 
 # --- Test Framework ---
 testFramework="unknown"
 
-if [ -f "$PROJECT_DIR/vitest.config.js" ] || [ -f "$PROJECT_DIR/vitest.config.ts" ] || \
-   ([ -f "$PROJECT_DIR/package.json" ] && jq -e '.devDependencies.vitest' "$PROJECT_DIR/package.json" >/dev/null 2>&1); then
+if find_file "vitest.config.js" >/dev/null 2>&1 || find_file "vitest.config.ts" >/dev/null 2>&1 || \
+   ([ -n "$PACKAGE_JSON" ] && jq -e '.devDependencies.vitest' "$PACKAGE_JSON" >/dev/null 2>&1); then
   testFramework="vitest"
-elif [ -f "$PROJECT_DIR/jest.config.js" ] || [ -f "$PROJECT_DIR/jest.config.ts" ] || \
-     ([ -f "$PROJECT_DIR/package.json" ] && jq -e '.devDependencies.jest' "$PROJECT_DIR/package.json" >/dev/null 2>&1); then
+elif find_file "jest.config.js" >/dev/null 2>&1 || find_file "jest.config.ts" >/dev/null 2>&1 || \
+     ([ -n "$PACKAGE_JSON" ] && jq -e '.devDependencies.jest' "$PACKAGE_JSON" >/dev/null 2>&1); then
   testFramework="jest"
-elif [ "$language" = "python" ]; then
-  if [ -f "$PROJECT_DIR/pytest.ini" ] || [ -f "$PROJECT_DIR/conftest.py" ] || \
-     ([ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "pytest" "$PROJECT_DIR/requirements.txt" 2>/dev/null) || \
-     ([ -f "$PROJECT_DIR/pyproject.toml" ] && grep -qi "pytest" "$PROJECT_DIR/pyproject.toml" 2>/dev/null); then
-    testFramework="pytest"
+fi
+
+if [ "$language" = "python" ] || [ "$language" = "multi" ]; then
+  if find_file "pytest.ini" >/dev/null 2>&1 || find_file "conftest.py" >/dev/null 2>&1 || \
+     grep_file "pytest" "requirements.txt" || grep_file "pytest" "pyproject.toml"; then
+    if [ "$testFramework" != "unknown" ]; then
+      testFramework="$testFramework+pytest"
+    else
+      testFramework="pytest"
+    fi
   fi
 elif [ "$language" = "go" ]; then
   testFramework="go-test"
@@ -92,19 +141,26 @@ fi
 # --- Linter ---
 linter="unknown"
 
-if [ -f "$PROJECT_DIR/.eslintrc.js" ] || [ -f "$PROJECT_DIR/.eslintrc.json" ] || [ -f "$PROJECT_DIR/.eslintrc.yml" ] || [ -f "$PROJECT_DIR/eslint.config.js" ] || [ -f "$PROJECT_DIR/eslint.config.mjs" ] || \
-   ([ -f "$PROJECT_DIR/package.json" ] && jq -e '.devDependencies.eslint' "$PROJECT_DIR/package.json" >/dev/null 2>&1); then
+if find_file ".eslintrc.js" >/dev/null 2>&1 || find_file ".eslintrc.json" >/dev/null 2>&1 || find_file "eslint.config.js" >/dev/null 2>&1 || find_file "eslint.config.mjs" >/dev/null 2>&1 || \
+   ([ -n "$PACKAGE_JSON" ] && jq -e '.devDependencies.eslint' "$PACKAGE_JSON" >/dev/null 2>&1); then
   linter="eslint"
-elif [ -f "$PROJECT_DIR/biome.json" ]; then
+elif find_file "biome.json" >/dev/null 2>&1; then
   linter="biome"
 fi
 
-if [ "$language" = "python" ]; then
-  if [ -f "$PROJECT_DIR/ruff.toml" ] || ([ -f "$PROJECT_DIR/pyproject.toml" ] && grep -qi "\[tool.ruff\]" "$PROJECT_DIR/pyproject.toml" 2>/dev/null) || \
-     ([ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "ruff" "$PROJECT_DIR/requirements.txt" 2>/dev/null); then
-    linter="ruff"
-  elif [ -f "$PROJECT_DIR/.flake8" ] || ([ -f "$PROJECT_DIR/requirements.txt" ] && grep -qi "flake8" "$PROJECT_DIR/requirements.txt" 2>/dev/null); then
-    linter="flake8"
+if [ "$language" = "python" ] || [ "$language" = "multi" ]; then
+  if find_file "ruff.toml" >/dev/null 2>&1 || grep_file "\\[tool.ruff\\]" "pyproject.toml" || grep_file "ruff" "requirements.txt"; then
+    if [ "$linter" != "unknown" ]; then
+      linter="$linter+ruff"
+    else
+      linter="ruff"
+    fi
+  elif find_file ".flake8" >/dev/null 2>&1 || grep_file "flake8" "requirements.txt"; then
+    if [ "$linter" != "unknown" ]; then
+      linter="$linter+flake8"
+    else
+      linter="flake8"
+    fi
   fi
 fi
 
@@ -115,6 +171,10 @@ if [ -f "$PROJECT_DIR/turbo.json" ] || [ -f "$PROJECT_DIR/nx.json" ] || [ -f "$P
 elif [ -f "$PROJECT_DIR/pnpm-workspace.yaml" ]; then
   monorepo=true
 elif [ -d "$PROJECT_DIR/packages" ] && [ -d "$PROJECT_DIR/apps" ]; then
+  monorepo=true
+elif [ "$language" = "multi" ]; then
+  monorepo=true
+elif [ -d "$PROJECT_DIR/backend" ] && [ -d "$PROJECT_DIR/frontend" ]; then
   monorepo=true
 fi
 
