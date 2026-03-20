@@ -29,6 +29,23 @@ Apply? (y/n/edit)
 
 3. Process user response:
    - **y (yes)**: Apply the change
+     - **A/B Eval (skill proposals only)**: For `skill_customization` or `skill_creation` proposals, after user approves (y):
+       1. Check if `/skill-builder` is installed
+          - If not installed: skip eval, proceed directly to execution. Show: "💡 Install /skill-builder for A/B eval comparison"
+       2. If installed, prompt: "🔬 Run eval comparison? (y/n) — Compares current state (baseline) vs proposed skill"
+       3. If user says n: proceed directly to execution
+       4. If user says y:
+          a. Baseline: `/skill-builder` runs eval with current state (existing plugin or no skill)
+          b. Generate proposed skill via `/skill-builder`
+          c. Run eval with proposed skill
+          d. Show comparison:
+             ```
+             Baseline (current):     score X/10
+             With proposed skill:    score Y/10 (+Z improvement)
+             ```
+          e. User confirms: apply / skip
+          f. Record eval results in insights-history.json proposal entry:
+             `"eval": {"baseline": X, "proposed": Y, "delta": Z, "ranAt": "{date}"}`
      - For skill customization (type=skill_customization): invoke `/skill-builder` to fork/customize the installed marketplace plugin with project-specific rules
      - For skill creation (type=skill_creation): invoke `/skill-builder` with usage data context — only when no marketplace plugin covers the gap
      - For file edits (CLAUDE.md, .claudeignore, config.json, etc.): apply directly using Edit tool
