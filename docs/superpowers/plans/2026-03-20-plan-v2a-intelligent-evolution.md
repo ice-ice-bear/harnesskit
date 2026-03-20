@@ -466,7 +466,8 @@ If `.harnesskit/config.json` exists but has no `schemaVersion` or `schemaVersion
    - Add `schemaVersion: "2.0"`
    - Add `uncoveredAreas: []` (will be populated by next insights run)
    - Add `reviewInternalization: {"stage": "marketplace_only", ...}`
-   - Add `customHooks: []`, `customSkills: []`, `customAgents: []`, `removedPlugins: []`
+   - Add `customHooks: []`, `customSkills: []`, `customAgents: []`
+   - Add `removedPlugins: []`
 4. Update `templates/claude-md/base.md` references in project CLAUDE.md (append v2a logging rules)
 5. Output: "✅ Migrated to v2a schema. Existing data preserved."
 ```
