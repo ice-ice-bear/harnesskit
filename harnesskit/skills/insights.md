@@ -21,6 +21,7 @@ Read the following files (skip gracefully if missing):
 7. `CLAUDE.md` — current rules
 8. `.harnesskit/skills/*.md` — current skills (read file list and contents)
 9. `.claude/settings.json` — current hooks configuration
+10. `.harnesskit/config.json` — v2a fields: `installedPlugins`, `uncoveredAreas`, `reviewInternalization`, `customSkills`, `customAgents`, `customHooks`
 
 ## Analysis Dimensions
 
@@ -40,14 +41,41 @@ Read the following files (skip gracefully if missing):
 
 ### 4. Toolkit Usage
 - Which installed marketplace plugins are referenced in sessions?
-- Are there usage patterns that no installed plugin covers? → propose custom skill via `/skill-builder`
-- Are installed plugins insufficient for project-specific needs? → propose customization via `/skill-builder`
+- Track plugin effectiveness: do errors in plugin-covered areas decrease over time?
+- If installed plugin is not reducing errors → propose customization via `/skill-builder`
+- Are there usage patterns that no installed plugin covers? → propose custom skill or marketplace recommendation
+- Are custom skills/agents/hooks being used? Are they effective?
 - Are dev hooks being bypassed or causing friction?
 
 ### 5. Preset Fit
 Apply quantified thresholds:
 - **Upgrade**: 0 BLOCKs in 10 sessions AND avg features > 1/session AND 0 repeated errors
 - **Downgrade**: same error in 3/5 sessions OR failure rate > 50% OR avg WARNs >= 3/session
+
+### 6. Time-Sink Patterns (v2a)
+- Analyze `taskTimeDistribution` across sessions
+- Flag task types consuming >30% of session time in 3+ sessions (scaled by preset)
+- Cross-reference with installed plugins and custom agents — is there already a tool for this?
+- If no tool exists → `agent_creation` proposal
+
+### 7. Repeated Manual Actions (v2a)
+- Analyze `toolCallSequences` across sessions
+- Flag sequences appearing in 3+ sessions (scaled by preset)
+- Cross-reference with existing hooks — is this already automated?
+- If not automated → `hook_creation` proposal
+
+### 8. Plugin Coverage Gap (v2a)
+- Compare `installedPlugins` effectiveness against error patterns
+- Check `uncoveredAreas` — do errors cluster in uncovered areas?
+- If installed plugin covers area but errors persist → `skill_customization` proposal
+- If no plugin covers the area → `skill_creation` or `plugin_recommendation` proposal
+
+### Feedback Theme Normalization (v2a)
+Before analyzing `pluginUsage.feedbackThemes` across sessions:
+1. Normalize slugs: lowercase, hyphens, no special chars
+2. Merge semantically similar slugs (e.g., "missing-error-boundary" ≈ "no-error-boundary")
+3. Reference existing themes from prior session-logs to maintain consistency
+This normalization happens at insights analysis time (Claude-powered, semantic matching).
 
 ## Report Output
 
@@ -103,6 +131,91 @@ Reason: {why this change helps, based on data}
 4. For plugin recommendations: provide the marketplace install command
 5. For preset changes: show before/after comparison
 6. Maximum 5 proposals per insights run (prioritize by impact)
+
+### v2a Proposal Types
+
+#### `agent_creation`
+- **Trigger**: Same task type >30% time in 3+ sessions (preset-scaled)
+- **Minimum sessions**: 5 (intermediate), 3 (beginner), 8 (advanced)
+- **Cooldown key**: `agent_creation:{task-type-slug}`
+- **Cooldown**: 15 sessions after rejection
+- **Diff format**: Show proposed agent.md content
+- **Execution**: `/skill-builder` generates agent with session data context
+- **Target**: `.harnesskit/agents/{name}.md`
+
+#### `hook_creation`
+- **Trigger**: Same tool call sequence (3+ steps) in 3+ sessions (preset-scaled)
+- **Minimum sessions**: 5 (intermediate), 3 (beginner), 8 (advanced)
+- **Cooldown key**: `hook_creation:{sequence-summary-slug}`
+- **Cooldown**: 10 sessions after rejection
+- **Diff format**: Show proposed shell script + hook registration point + rationale
+- **Hook point decision**: "pre-execution check" → PreToolUse, "post-execution action" → PostToolUse
+- **Conflict check**: If same-purpose hook exists → propose replace/coexist choice
+- **Execution**: Generate shell script directly (not via /skill-builder)
+- **Target**: `.harnesskit/hooks/{name}.sh` + `.claude/settings.json`
+
+#### `review_supplement`
+- **Trigger**: Same review feedback theme in 5+ sessions
+- **Minimum sessions**: 5 (intermediate), 3 (beginner), 8 (advanced)
+- **Prerequisite**: `/review` or similar marketplace plugin installed
+- **Cooldown key**: `review_supplement`
+- **Cooldown**: 15 sessions after rejection
+- **Diff format**: Show proposed review rules content
+- **Execution**: `/skill-builder` generates review skill with feedback data context
+- **Target**: `.harnesskit/skills/project-review-rules.md`
+- **Side effect**: Update `config.json` reviewInternalization to `stage: "supplement"`
+
+#### `review_replace`
+- **Trigger**: Supplement skill covers 80%+ of themes + 10+ sessions active
+- **Prerequisite**: `review_supplement` accepted and active
+- **Cooldown key**: `review_replace`
+- **Cooldown**: 20 sessions after rejection
+- **Coverage measurement**: (themes covered by supplement) / (total unique themes in last 10 sessions) × 100
+- **Diff format**: Show merged review skill content + marketplace plugin removal
+- **Execution**: `/skill-builder` merges supplement into full review skill
+- **Target**: `.harnesskit/skills/code-review.md`
+- **Side effect**: Remove marketplace plugin, record in `config.json` removedPlugins, update reviewInternalization to `stage: "replace"`
+- **Rollback**: If new errors increase 50%+ in 5 sessions post-replace → auto-propose marketplace reinstall
+
+#### `plugin_recommendation` (v2a enhanced)
+- **v1 behavior**: Static rules from detected.json (setup-time only)
+- **v2a behavior**: Data-driven from session-logs (every insights run)
+- **Trigger**: Usage pattern matches known plugin category in 3+ sessions
+- **Examples**:
+  - "Code review requested 8 times in 5 sessions, no review plugin installed" → recommend `/review`
+  - "Security checks run manually before deploy" → recommend `/security-review`
+- **Minimum sessions**: 3 (all presets)
+- **Cooldown key**: `plugin_recommendation:{plugin-name}`
+- **Cooldown**: 10 sessions after rejection
+
+### Threshold Configuration (v2a)
+
+All thresholds scale by preset:
+
+| Threshold | Beginner | Intermediate | Advanced |
+|-----------|----------|-------------|----------|
+| Minimum sessions for generation proposals | 3 | 5 | 8 |
+| Pattern repetition (sessions) | 2 | 3 | 5 |
+| Agent time-sink % | 25% | 30% | 40% |
+| Review replace wait (sessions after supplement) | 8 | 10 | 15 |
+
+### Priority Ordering (v2a)
+
+When >5 proposals qualify, select by priority:
+
+1. `skill_customization` / `skill_creation` (error reduction)
+2. `hook_creation` (time savings)
+3. `review_supplement` / `review_replace` (quality)
+4. `agent_creation` (productivity)
+5. `plugin_recommendation` (ecosystem)
+
+Same-priority tiebreak: more sessions affected → higher error/repetition count.
+
+### Cooldown Keys (v2a)
+
+Rejection cooldown applies to type + target combination:
+- `skill_customization:{plugin-name}`, `agent_creation:{task-type}`, `hook_creation:{sequence-slug}`, etc.
+- Different targets of the same type are independent (rejecting one doesn't block others)
 
 ## After Report
 
