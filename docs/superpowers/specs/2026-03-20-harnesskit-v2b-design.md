@@ -251,86 +251,117 @@ insights의 Feature Progress 분석 차원에 다음 감지 추가:
 
 ## 5. 바이블 가이드라인 (Feature 9)
 
-### 5.1 트리거
+### 5.1 설계 원칙 — Constant, Not Extensible
 
-`/harnesskit:setup` 중, 프리셋 선택 후 init 전:
+바이블은 **플러그인과 함께 배포되는 고정 참조 문서**이다. 사용자가 수정/확장하지 않는다.
+
+이유:
+- 임의의 외부 소스 추가 시 기존 CLAUDE.md/skill/agent 구조와 **충돌하는 가이드라인** 유입 위험
+- 블로그 포스트의 핵심 가치는 Claude Code의 **실제 skill/agent 스펙 형식에 부합하는** 원칙 제공
+- 다른 소스의 다른 형식 지침이 섞이면 **생성 품질 저하** (HarnessKit의 핵심 기능 훼손)
+- 업데이트가 필요하면 플러그인 관리자(개발자)가 직접 수행
+
+### 5.2 소스 — 검증된 2개 블로그 포스트
+
+| 소스 | 추출 내용 |
+|------|----------|
+| [Claude Code 실전 가이드](https://ice-ice-bear.github.io/posts/2026-03-19-claude-code-practical-guide/) | 세션 관리, lazy loading, MCP 다이어트, WAT 프레임워크, TDD 사이클, 모델 선택 전략 |
+| [Vibe Coding Fundamentals](https://ice-ice-bear.github.io/posts/2026-03-16-vibe-coding-fundamentals/) | 4대 원칙 (명확한 컨텍스트, 반복적 소단위, 검증 가능한 출력, 생성 시스템 구축), 바이브코딩 성숙도 스펙트럼 |
+
+**제외한 소스와 이유:**
+
+| 제외 소스 | 이유 |
+|----------|------|
+| Claude Skills V2 포스트 | skill frontmatter 스펙은 Claude Code 자체 영역 — bible이 아닌 `/skill-builder`가 관리 |
+| HarnessKit 개발기 | 우리 자체 스펙에 이미 포함 — 중복 |
+| YouTube 영상 | 블로그에 핵심 내용 이미 반영됨 |
+
+### 5.3 바이블 내용 — 원칙만, 구조/형식 지침 제외
+
+bible.md는 **철학과 원칙**만 포함. skill/agent/hook의 **파일 형식이나 구조 지침은 절대 포함하지 않는다**.
+
+`harnesskit/templates/bible.md` (플러그인 내 고정 파일):
+
+```markdown
+# HarnessKit Bible — Harness Engineering Principles
+
+> 이 문서는 참조용 원칙 모음입니다. 파일 구조나 형식 지침은 CLAUDE.md와 HarnessKit 템플릿을 따르세요.
+> 출처: Claude Code 실전 가이드, Vibe Coding Fundamentals
+
+## 1. 컨텍스트 관리
+- Fresh context > bloated context (컨텍스트는 우유 — 시간이 지나면 상한다)
+- Lazy Loading: 목차를 주고, 전체 매뉴얼을 주지 않는다
+- MCP 다이어트: 동시 활성 5-6개로 제한, 미사용 MCP 비활성화
+
+## 2. 세션 위생
+- One session = one feature (예: "Stripe webhook handler", NOT "전체 결제 시스템")
+- /clear로 feature 완료 후 리셋
+- /compact를 전략적 시점에 실행 (자동 압축에 의존하지 않음)
+- 토큰 사용량을 /statusline으로 지속 모니터링
+
+## 3. 작업 설계
+- 반복적 소단위: 전체 feature 한 번에 요청하지 않음
+- 검증 가능한 출력: TDD — 가정이 아닌 테스트로 검증
+- Plan Mode → Implementation 분리: 계획 세션과 구현 세션을 나눔
+- Claude의 사고 과정 무시하지 않기: 잘못된 가정은 Escape로 중단
+
+## 4. 지식 아키텍처
+- CLAUDE.md = 팀 공유 규칙 (간결하게)
+- MEMORY.md = 개인 선호/패턴 (자동 관리)
+- TODO.md / progress files = 세션 간 작업 연속성
+- feature_list.json = passes: false 패턴으로 작업 추적
+- Mermaid 다이어그램: 산문보다 다이어그램으로 시스템 구조 표현
+
+## 5. 자동화 철학
+- Zero-token hooks: 경량 감지는 shell (bash + jq)
+- Claude는 판단이 필요한 분석에만 (insights 트리거 시)
+- WAT 프레임워크: Workflow → Agent → Tools (단계별 정의)
+- 작은 단일 작업 스크립트 > 모놀리식 도구
+
+## 6. 툴킷 철학
+- Marketplace First, Customize Later
+- 바퀴를 재발명하지 않는다
+- 산출물이 아닌 생성 시스템을 구축한다 (재현 가능한 워크플로우)
+- 모델 선택: Haiku(간단) → Sonnet(일반) → Opus(설계/복잡)
+
+## 7. 안티패턴
+- CLAUDE.md에 모든 것을 넣지 않는다
+- 자동 압축에 의존하지 않는다
+- 전체 feature를 한 번에 요청하지 않는다
+- 스택 트레이스를 해석하지 말고 전체를 붙여넣는다
+- 외부 데이터 읽기 시 Prompt Injection 주의
+```
+
+### 5.4 트리거
+
+`/harnesskit:setup` 중 init 단계에서 자동으로 bible.md를 사용자 프로젝트에 복사:
 
 ```
-📖 Compile a harness engineering reference guide? (y/n)
-   Sources: Anthropic harness article, community best practices
-   You can add custom sources later.
+① harnesskit/templates/bible.md → .harnesskit/bible.md 복사
+② CLAUDE.md에 참조 추가: "For harness principles → .harnesskit/bible.md"
+③ 출력: "📖 Bible installed (harness engineering principles reference)"
 ```
 
-### 5.2 흐름
+별도 opt-in 불필요 — 항상 설치. 참조만 하므로 해가 없음.
 
-```
-① 사용자가 setup 중 opt-in (또는 나중에 setup 재실행)
-② 소스 레지스트리 읽기: .harnesskit/bible-sources.json
-③ 각 소스에 대해 타입별 처리:
-   ├─ url: WebFetch로 내용 가져오기
-   ├─ file: Read로 직접 읽기
-   └─ directory: Glob + Read로 디렉토리 내 모든 markdown 읽기
-④ 핵심 원칙, 패턴, 안티패턴 추출
-⑤ 카테고리별 정리: 세션 관리, 에러 처리, 테스트, 가드레일 등
-⑥ .harnesskit/bible.md로 컴파일
-⑦ CLAUDE.md에 참조 추가: "For harness principles → .harnesskit/bible.md"
-⑧ 출력: "📖 Bible compiled from {N} sources ({line_count} lines)"
-```
+### 5.5 Insights 연동
 
-### 5.3 소스 레지스트리
+insights가 규칙 제안 시 bible 원칙을 인용 가능:
+- "바이블 원칙 '세션 위생: One session = one feature'에 따라, feature 분할을 권장합니다"
+- bible은 **인용 소스**이지 **지시 소스**가 아님
 
-`.harnesskit/bible-sources.json`:
+### 5.6 업데이트 정책
 
-```json
-{
-  "sources": [
-    {
-      "type": "url",
-      "path": "https://ice-ice-bear.github.io/posts/2026-03-19-claude-code-practical-guide/",
-      "name": "Claude Code Practical Guide",
-      "addedAt": "2026-03-20"
-    },
-    {
-      "type": "file",
-      "path": "docs/team-conventions.md",
-      "name": "Team Conventions",
-      "addedAt": "2026-03-21"
-    },
-    {
-      "type": "directory",
-      "path": "docs/references/",
-      "name": "Reference Documents",
-      "addedAt": "2026-03-22"
-    }
-  ]
-}
-```
+- bible.md는 **플러그인 업데이트로만 변경** (사용자 수정 불가)
+- 새 소스 추가나 내용 변경이 필요하면 플러그인 관리자(개발자)가 판단 후 업데이트
+- 사용자 프로젝트의 `.harnesskit/bible.md`는 플러그인 업데이트 시 자동 갱신
 
-| 소스 타입 | 처리 방법 |
-|----------|----------|
-| `url` | WebFetch → 내용 추출 |
-| `file` | Read → 직접 읽기 |
-| `directory` | Glob + Read → 디렉토리 내 모든 markdown |
-
-### 5.4 크기 제한 및 Lazy Loading
-
-- **bible.md 최대 200줄**: 소스 내용이 초과하면 핵심 원칙 위주로 요약
-- **Lazy Loading**: CLAUDE.md에는 참조만 포함 ("For harness principles → .harnesskit/bible.md"). Claude가 관련 작업 시에만 읽음
-- 토큰 영향: 매 세션 로드 아님. 필요 시에만 참조하므로 토큰 비용 최소
-
-### 5.5 확장성
-
-- 사용자가 `bible-sources.json`에 URL/파일/디렉토리 추가 → 다음 setup 실행 시 재컴파일
-- insights가 규칙 제안 시 bible.md 참조 가능: "바이블 원칙 X에 부합합니다"
-- 매 세션 자동 fetch 없음 — setup 또는 명시적 요청 시만 컴파일
-- 재컴파일 방법: `/harnesskit:setup --recompile-bible` 또는 setup 재실행 시 "Recompile bible? (y/n)" 프롬프트
-
-### 5.6 파일 변경
+### 5.7 파일 변경
 
 | 파일 | 변경 |
 |------|------|
-| 수정: `harnesskit/skills/setup.md` | setup 흐름에 바이블 opt-in 추가 |
-| 수정: `harnesskit/skills/init.md` | 바이블 컴파일 단계 + bible-sources.json 생성 |
+| 신규: `harnesskit/templates/bible.md` | 고정 바이블 문서 (플러그인 내 템플릿) |
+| 수정: `harnesskit/skills/init.md` | bible.md 복사 단계 추가 |
 
 ---
 
@@ -342,14 +373,14 @@ insights의 Feature Progress 분석 차원에 다음 감지 추가:
 |------|------|
 | `harnesskit/skills/prd.md` | `/harnesskit:prd` — PRD → GitHub issues + feature_list |
 | `harnesskit/skills/worktree.md` | `/harnesskit:worktree` — harness-aware worktree wrapper |
+| `harnesskit/templates/bible.md` | 고정 바이블 — harness engineering 원칙 참조 문서 |
 
 ### 6.2 수정 파일
 
 | 파일 | 변경 내용 |
 |------|----------|
 | `harnesskit/skills/apply.md` | A/B eval 비교 프롬프트 (skill 승인 후) |
-| `harnesskit/skills/setup.md` | 바이블 가이드라인 opt-in 추가 |
-| `harnesskit/skills/init.md` | 바이블 컴파일 단계 + bible-sources.json 초기화 |
+| `harnesskit/skills/init.md` | bible.md 복사 단계 추가 |
 | `harnesskit/skills/insights.md` | Feature Progress에 worktree 제안 넛지 추가 |
 | `harnesskit/plugin.json` | prd.md, worktree.md 등록, 버전 0.1.0 → 0.2.0 |
 
@@ -358,7 +389,7 @@ insights의 Feature Progress 분석 차원에 다음 감지 추가:
 | 파일 | 이유 |
 |------|------|
 | `harnesskit/hooks/*` | 신규 hook 없음 — 모든 v2b 기능은 skill 기반 |
-| `harnesskit/templates/*` | 신규 템플릿 없음 |
+| `harnesskit/skills/setup.md` | 바이블이 항상 설치되므로 setup opt-in 불필요 |
 | `harnesskit/scripts/*` | 신규 스크립트 없음 |
 | `harnesskit/skills/status.md` | v2b 대시보드 변경 없음 (필요 시 v2c에서) |
 
@@ -386,8 +417,7 @@ v2b는 `schemaVersion: "2.1"`로 범프:
 ```json
 {
   "schemaVersion": "2.1",
-  "bibleCompiled": false,
-  "bibleSources": ".harnesskit/bible-sources.json"
+  "bibleInstalled": true
 }
 ```
 
@@ -395,6 +425,7 @@ v2b는 `schemaVersion: "2.1"`로 범프:
 > **plugin.json 버전**: v1/v2a = `"0.1.0"`, v2b = `"0.2.0"` (신규 user-facing skills 추가)
 
 `abTests` 별도 필드 불필요 — insights-history.json의 proposal 기록에 eval 결과 포함.
+`bibleSources` 필드 불필요 — bible은 고정 템플릿, 소스 레지스트리 없음.
 
 ### 6.6 PRD → Worktree 사용 패턴
 
