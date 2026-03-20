@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "harnesskit",
-      "source": ".",
+      "source": "./",
       "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
       "version": "0.2.0",
       "author": {
