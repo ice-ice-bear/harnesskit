@@ -426,7 +426,7 @@ CLAUDE.md의 세션 프로토콜에 다음 규칙을 추가:
 2. **기존 테마 참조**: CLAUDE.md 프로토콜에 "기존 `.harnesskit/session-logs/`의 feedbackThemes를 확인하고, 동일 개념이면 기존 slug 재사용" 규칙 포함
 3. **Insights가 정규화 검증**: insights 분석 시 유사 slug 병합 (예: `missing-error-boundary`와 `no-error-boundary`는 동일 테마로 취급). 이 단계는 Claude 기반이므로 의미적 판단 가능
 
-### 5.5 insights-history.json — 스키마 변경 없음
+### 5.7 insights-history.json — 스키마 변경 없음
 
 기존 구조가 v2a proposal을 그대로 처리. `type` 필드는 문자열이므로 신규 타입 수용 가능. `status` (accepted/rejected) + `rejectedUntilSession`도 동일하게 작동.
 
