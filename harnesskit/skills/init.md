@@ -36,6 +36,15 @@ Based on detected framework and preset, generate:
 
 6. **.harnesskit/insights-history.json** — create empty: `{"history": []}`
 
+7. **v2a fields in .harnesskit/config.json** — if `schemaVersion` is missing or < "2.0", add:
+   - `schemaVersion`: `"2.0"`
+   - `uncoveredAreas`: populated during marketplace plugin discovery (areas with no matching plugin)
+   - `reviewInternalization`: `{"stage": "marketplace_only", "supplementSince": null, "coveragePercent": null}`
+   - `customHooks`: `[]`
+   - `customSkills`: `[]`
+   - `customAgents`: `[]`
+   - `removedPlugins`: `[]`
+
 ### 2. Register Hooks in .claude/settings.json
 
 Merge HarnessKit hooks into existing `.claude/settings.json`:
