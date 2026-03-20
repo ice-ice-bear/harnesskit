@@ -33,6 +33,29 @@ Apply? (y/n/edit)
      - For skill creation (type=skill_creation): invoke `/skill-builder` with usage data context — only when no marketplace plugin covers the gap
      - For file edits (CLAUDE.md, .claudeignore, config.json, etc.): apply directly using Edit tool
      - For plugin recommendations (type=plugin_recommendation): run marketplace install command
+     - For agent creation (type=agent_creation):
+       1. Invoke `/skill-builder` with: detected.json + session-logs excerpts showing time-sink pattern + task descriptions
+       2. Save generated agent.md to `.harnesskit/agents/{name}.md`
+       3. Update `config.json` customAgents array: `{"name": "{name}", "file": ".harnesskit/agents/{name}.md", "createdAt": "{date}", "sourceProposal": "{id}", "type": "agent_creation"}`
+     - For hook creation (type=hook_creation):
+       1. Save proposed shell script to `.harnesskit/hooks/{name}.sh`
+       2. `chmod +x` the script
+       3. Check `.claude/settings.json` for conflicting hooks at the same hook point with same purpose → if found, ask user to replace or coexist
+       4. Append hook to `.claude/settings.json` at the specified hook point (end of array)
+       5. Update `config.json` customHooks array: `{"name": "{name}", "file": ".harnesskit/hooks/{name}.sh", "hookPoint": "{point}", "createdAt": "{date}", "sourceProposal": "{id}"}`
+     - For review supplement (type=review_supplement):
+       1. Invoke `/skill-builder` with: review feedback themes + CLAUDE.md conventions + detected.json
+       2. Save generated skill to `.harnesskit/skills/project-review-rules.md`
+       3. Add reference to CLAUDE.md
+       4. Update `config.json`: reviewInternalization.stage = "supplement", supplementSince = "{date}"
+       5. Update `config.json` customSkills array
+     - For review replace (type=review_replace):
+       1. Confirm with user: "This will remove marketplace /review plugin. Continue?"
+       2. Invoke `/skill-builder` to merge supplement + expanded rules into full review skill
+       3. Save to `.harnesskit/skills/code-review.md`
+       4. Run marketplace uninstall for review plugin
+       5. Update `config.json`: reviewInternalization.stage = "replace", record in removedPlugins with version info
+       6. Update CLAUDE.md references
    - **n (no)**: Skip, ask for optional rejection reason
    - **edit**: Let user modify the proposal, then apply modified version
 
