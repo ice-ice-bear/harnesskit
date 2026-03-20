@@ -22,6 +22,9 @@ fi
 ERRORS="[]"
 FEATURES_COMPLETED="[]"
 FEATURES_FAILED="[]"
+TOOL_CALL_SEQUENCES="[]"
+TASK_TIME_DISTRIBUTION="{}"
+PLUGIN_USAGE="{}"
 
 if [ -f ".harnesskit/current-session.jsonl" ]; then
   ERROR_LINES=$(grep '"type":"error"' .harnesskit/current-session.jsonl 2>/dev/null || true)
@@ -39,6 +42,54 @@ if [ -f ".harnesskit/current-session.jsonl" ]; then
     FEATURES_FAILED=$(echo "$FAIL_LINES" | jq -s 'map(.id) | unique' 2>/dev/null || echo "[]")
   fi
 
+  # --- v2a: Extract tool call data ---
+  TOOL_LINES=$(grep '"type":"tool_call"' .harnesskit/current-session.jsonl 2>/dev/null || true)
+  PLUGIN_LINES=$(grep '"type":"plugin_invocation"' .harnesskit/current-session.jsonl 2>/dev/null || true)
+
+  # --- Tool call sequence detection (by tool name only, ignoring summary) ---
+  if [ -n "$TOOL_LINES" ]; then
+    TOOL_CALL_SEQUENCES=$(echo "$TOOL_LINES" | jq -s '
+      [.[] | .tool] as $tools |
+      (reduce range(0; ($tools | length) - 1) as $i (
+        {};
+        ($tools[$i] + " \u2192 " + $tools[$i+1]) as $pair |
+        .[$pair] = ((.[$pair] // 0) + 1)
+      )) as $pairs |
+      [$pairs | to_entries[] | select(.value >= 2) |
+        (.key | split(" \u2192 ")) as $seq |
+        {sequence: $seq, count: .value, context: "repeated pattern"}
+      ]
+    ' 2>/dev/null || echo "[]")
+
+    # --- Task time distribution ---
+    TASK_TIME_DISTRIBUTION=$(echo "$TOOL_LINES" | jq -s '
+      (length) as $total |
+      if $total == 0 then {} else
+        (map(
+          if .tool == "WebSearch" or .tool == "WebFetch" then "research"
+          elif .tool == "Edit" or .tool == "Write" then "coding"
+          elif (.tool == "Bash" and ((.summary // "") | test("test|jest|vitest|pytest|lint|eslint|ruff"; "i"))) then "debugging"
+          elif .tool == "Bash" then "coding"
+          else "other"
+          end
+        ) | group_by(.) | map({(.[0]): (length / $total)}) | add) // {}
+      end
+    ' 2>/dev/null || echo "{}")
+  fi
+
+  # --- Plugin usage extraction ---
+  if [ -n "$PLUGIN_LINES" ]; then
+    PLUGIN_USAGE=$(echo "$PLUGIN_LINES" | jq -s '
+      group_by(.plugin) |
+      map({
+        (.[0].plugin): {
+          invocations: length,
+          feedbackThemes: [.[].feedback[] | select(. != null and . != "")] | unique
+        }
+      }) | add // {}
+    ' 2>/dev/null || echo "{}")
+  fi
+
   rm -f .harnesskit/current-session.jsonl
 fi
 
@@ -53,6 +104,9 @@ jq -n \
   --argjson done "$FEATURES_COMPLETED" \
   --argjson failed "$FEATURES_FAILED" \
   --argjson errs "$ERRORS" \
+  --argjson seqs "$TOOL_CALL_SEQUENCES" \
+  --argjson dist "$TASK_TIME_DISTRIBUTION" \
+  --argjson plugins "$PLUGIN_USAGE" \
   '{
     sessionId: $sid,
     startedAt: $start,
@@ -61,7 +115,10 @@ jq -n \
     filesChanged: $files,
     featuresCompleted: $done,
     featuresFailed: $failed,
-    errors: $errs
+    errors: $errs,
+    toolCallSequences: $seqs,
+    taskTimeDistribution: $dist,
+    pluginUsage: $plugins
   }' > ".harnesskit/session-logs/$SESSION_ID.json"
 
 # --- Update failures.json ---
