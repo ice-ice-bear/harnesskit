@@ -10,13 +10,11 @@ Display a quick dashboard of the current harness state. Read files only, no modi
 
 ## Instructions
 
-1. Read `.harnesskit/config.json` for preset and detection date
+1. Read `.harnesskit/config.json` for preset, schemaVersion, installedPlugins, uncoveredAreas, reviewInternalization, customSkills, customAgents, customHooks
 2. Read `.harnesskit/detected.json` for project type
 3. Read `docs/feature_list.json` for feature progress
 4. Read `.harnesskit/failures.json` for active failures
 5. Read `.harnesskit/insights-history.json` for last insights date
-6. List `.harnesskit/skills/` for installed skills
-7. List `.harnesskit/agents/` for installed agents
 
 Output format:
 
@@ -24,15 +22,21 @@ Output format:
 ═══ HarnessKit Status ═══
 
 ⚙️  Preset: {preset} (since {detectedAt})
+    Schema: v{schemaVersion}
 📂  Project: {framework} + {language} + {testFramework}
 
 📋  Features:
     {progress bar} {done}/{total} ({percentage}%)
 
 🛠  Toolkit:
-    Skills: {list of .harnesskit/skills/*.md names}
-    Agents: {list of .harnesskit/agents/*.md names}
+    Marketplace Plugins: {list from config.json installedPlugins}
+    Custom Skills: {list from config.json customSkills, or "none yet"}
+    Custom Agents: {list from config.json customAgents, or "none yet"}
+    Custom Hooks: {list from config.json customHooks, or "none yet"}
     Dev Hooks: {list active hooks from .claude/settings.json}
+
+🔍  Review Internalization: {stage} {coveragePercent if supplement/replace}
+    Uncovered Areas: {list from config.json uncoveredAreas, or "all covered"}
 
 ⚠️  Active Failures: {count}
     {list top 3 open failures with pattern and occurrences}
