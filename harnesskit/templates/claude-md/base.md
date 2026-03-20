@@ -18,6 +18,16 @@
 - On feature complete: `{"type":"feature_done","id":"feat-XXX"}`
 - On feature fail: `{"type":"feature_fail","id":"feat-XXX"}`
 
+## Tool Usage Logging (v2a — automatic)
+- On major tool use, append to `.harnesskit/current-session.jsonl`:
+  `{"type":"tool_call","tool":"ToolName","summary":"brief description","timestamp":"HH:MM"}`
+  ※ Log Bash, Edit, Write, WebSearch, WebFetch only (skip Read, Glob, Grep)
+  ※ One line per tool call, keep summary under 50 chars
+- On marketplace plugin use:
+  `{"type":"plugin_invocation","plugin":"plugin-name","feedback":["slug-keyword"]}`
+  ※ feedback slugs: lowercase, hyphens, no spaces. Example: "missing-error-boundary"
+  ※ Reuse existing slugs from prior session logs when same concept applies
+
 ## Absolute Rules
 - Do NOT modify `feature_list.json` except the `passes` field
 - One feature per session
