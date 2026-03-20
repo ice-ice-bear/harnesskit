@@ -1,0 +1,16 @@
+{
+  "preset": "intermediate",
+  "schemaVersion": "2.0",
+  "detectedAt": "2026-03-20",
+  "installedPlugins": ["simplify", "review"],
+  "uncoveredAreas": ["error-handling", "performance"],
+  "reviewInternalization": {
+    "stage": "marketplace_only",
+    "supplementSince": null,
+    "coveragePercent": null
+  },
+  "customHooks": [],
+  "customSkills": [],
+  "customAgents": [],
+  "removedPlugins": []
+}

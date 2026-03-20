@@ -1,0 +1,2 @@
+{"type":"error","pattern":"ReferenceError: foo is not defined","file":"src/index.ts"}
+{"type":"feature_fail","id":"feat-002"}
