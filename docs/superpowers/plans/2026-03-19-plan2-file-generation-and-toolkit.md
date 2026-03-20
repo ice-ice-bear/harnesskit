@@ -4,7 +4,7 @@
 
 **Goal:** After Plan 1's detection + preset, generate all harness infrastructure files (CLAUDE.md, feature_list, progress, .claudeignore) and the toolkit (repo-specific skills, dev hooks, dev commands, marketplace/agent recommendations).
 
-**Architecture:** Template-based generation using `init.md` skill. CLAUDE.md is composed from `base.md` + framework template + preset filter. Skills are created via `/skill-builder` with seed templates. Dev hooks and commands are registered in `.claude/settings.json`. Follows "Curate, Don't Reinvent" — marketplace plugins recommended before self-generating.
+**Architecture:** Template-based generation using `init.md` skill. CLAUDE.md is composed from `base.md` + framework template + preset filter. Skills and agents come from marketplace (no seed templates — "Marketplace First, Customize Later"). Dev hooks and commands are registered in `.claude/settings.json`. Customization via `/skill-builder` happens later based on insights data.
 
 **Tech Stack:** Shell (bash), Markdown templates, JSON, Claude Code Plugin SDK
 
@@ -39,25 +39,8 @@ harnesskit/
 │   │   ├── nextjs.txt
 │   │   ├── python.txt
 │   │   └── generic.txt
-│   ├── feature-list/
-│   │   └── starter.json
-│   ├── skills/                          # Seed templates for /skill-builder
-│   │   ├── nextjs/
-│   │   │   ├── nextjs-conventions.md
-│   │   │   └── nextjs-testing.md
-│   │   ├── python-fastapi/
-│   │   │   ├── fastapi-conventions.md
-│   │   │   └── fastapi-testing.md
-│   │   ├── common/
-│   │   │   ├── typescript-standards.md
-│   │   │   └── git-workflow.md
-│   │   └── generic/
-│   │       └── general-conventions.md
-│   └── agents/
-│       ├── planner.md
-│       ├── reviewer.md
-│       ├── researcher.md
-│       └── debugger.md
+│   └── feature-list/
+│       └── starter.json
 └── tests/
     └── test-init-templates.sh           # Template validity tests
 ```
@@ -75,11 +58,10 @@ user-project/
     ├── detected.json                    # (from Plan 1)
     ├── failures.json                    # empty initial
     ├── insights-history.json            # empty initial
-    ├── skills/                          # generated via /skill-builder
-    │   ├── nextjs-conventions.md
-    │   └── ...
-    └── agents/                          # user-selected from templates
-        └── ...
+    ├── skills/                          # initially empty — created by insights via /skill-builder
+    │   └── (marketplace plugin customization or gap-filling)
+    └── agents/                          # initially empty — marketplace agents recommended
+        └── (v2: insights-based auto-generation)
 ```
 
 ---
@@ -234,97 +216,15 @@ git commit -m "feat: add .claudeignore and feature_list starter templates"
 
 ---
 
-### Task 3: Skill Seed Templates
+### ~~Task 3: Skill Seed Templates~~ (REMOVED)
 
-**Files:**
-- Create: `harnesskit/templates/skills/nextjs/nextjs-conventions.md`
-- Create: `harnesskit/templates/skills/nextjs/nextjs-testing.md`
-- Create: `harnesskit/templates/skills/python-fastapi/fastapi-conventions.md`
-- Create: `harnesskit/templates/skills/common/typescript-standards.md`
-- Create: `harnesskit/templates/skills/common/git-workflow.md`
-- Create: `harnesskit/templates/skills/generic/general-conventions.md`
-
-- [ ] **Step 1: Write nextjs-conventions.md seed**
-
-```markdown
----
-name: nextjs-conventions
-description: Next.js App Router conventions, Server/Client Component rules, and routing patterns for this project
----
-
-# Next.js Conventions
-
-## Component Model
-- Default to Server Components
-- Add `'use client'` only for: event handlers, useState/useEffect, browser APIs
-- Colocate client components in the same directory as their server parent
-
-## Routing
-- App Router with file-based routing
-- Dynamic routes: `[param]` directories
-- Route groups: `(group)` for layout organization
-
-## Data Fetching
-- Server Components: direct async/await (no useEffect)
-- Client Components: SWR or React Query
-- Server Actions for mutations
-
-## Images & Assets
-- Always use `next/image` with width/height or fill
-- SVGs: import as React components or use `next/image`
-```
-
-- [ ] **Step 2: Write other seed templates**
-
-(Create similar seed files for nextjs-testing.md, fastapi-conventions.md, typescript-standards.md, git-workflow.md, general-conventions.md — each with frontmatter name/description and framework-specific content skeleton)
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add harnesskit/templates/skills/
-git commit -m "feat: add skill seed templates for /skill-builder generation"
-```
+> **Removed**: Marketplace-first approach — no seed templates. Skills come from marketplace plugins. Customization via `/skill-builder` happens after insights data accumulation.
 
 ---
 
-### Task 4: Agent Templates
+### ~~Task 4: Agent Templates~~ (REMOVED)
 
-**Files:**
-- Create: `harnesskit/templates/agents/planner.md`
-- Create: `harnesskit/templates/agents/reviewer.md`
-- Create: `harnesskit/templates/agents/researcher.md`
-- Create: `harnesskit/templates/agents/debugger.md`
-
-- [ ] **Step 1: Write planner.md template**
-
-```markdown
----
-name: planner
-description: Creates detailed implementation plans before coding — lists files to modify, execution order, risks, and testing strategy
----
-
-# Planner Agent
-
-Before implementing any feature, create a detailed plan:
-
-1. **Files to modify**: List every file that will be created or changed
-2. **Execution order**: Dependencies between changes
-3. **Risks**: Edge cases, breaking changes, compatibility issues
-4. **Testing strategy**: What tests to write, in what order
-
-Output the plan in a structured format. Wait for user approval before proceeding.
-
-Do NOT write code. Only plan.
-```
-
-- [ ] **Step 2: Write remaining agent templates** (reviewer.md, researcher.md, debugger.md with similar structure)
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add harnesskit/templates/agents/
-git commit -m "feat: add agent templates (planner, reviewer, researcher, debugger)"
-```
+> **Removed**: Marketplace-first approach — no agent templates. Agents come from marketplace plugins. Custom agent generation is deferred to v2.
 
 ---
 
@@ -576,36 +476,25 @@ Merge HarnessKit hooks into existing `.claude/settings.json`:
 
 Preserve any existing hooks (append to arrays).
 
-### 3. Skills via /skill-builder ("Curate, Don't Reinvent")
+### 3. Marketplace Plugin Discovery ("Marketplace First, Customize Later")
 
-For each skill needed based on detected framework:
-1. Check if a suitable marketplace skill plugin exists → recommend installation
-2. If not available: load seed template from `templates/skills/{framework}/`
-3. Pass seed + detected.json to `/skill-builder` for project-customized generation
-4. Save to `.harnesskit/skills/`
-5. Add reference to CLAUDE.md
+Search marketplace for plugins matching detected project:
 
-### 4. Agent Recommendations
+**Skills:**
+1. Search for framework-specific skill plugins
+2. Search for common skill plugins (code style, git workflow, etc.)
+3. Recommend and install matching plugins — do NOT create custom skills at init time
+4. Record gaps in `.harnesskit/config.json` for future insights
 
-Present available agents from `templates/agents/`:
-```
-🤖 Recommended Agents:
-  [1] planner — Implementation planning before coding
-  [2] reviewer — Code review (or use marketplace /review)
-  [3] researcher — API docs and library research
-  [4] debugger — Error analysis and fix suggestions
+**Agents:**
+1. Search for matching agent plugins (planner, reviewer, debugger, researcher)
+2. Recommend and install matching plugins
+3. For code review: prefer established marketplace plugins (e.g., `/review`)
 
-  Install which? (1,2,3,4 / all / none):
-```
-
-Copy selected agents to `.harnesskit/agents/`.
-
-### 5. Marketplace Recommendations
-
-Based on detected.json, recommend marketplace plugins:
+**General recommendations** based on detected.json:
 - All projects: `/simplify`
 - Git remote detected: `/review`
-- API project (fastapi/nextjs api routes): `/security-review`
+- API project: `/security-review`
 
 ### 6. Summary
 
@@ -704,20 +593,6 @@ echo "=== Feature list starter ==="
 check_json "$TEMPLATES/feature-list/starter.json" "starter.json"
 
 echo ""
-echo "=== Skill seed templates ==="
-check_file "$TEMPLATES/skills/nextjs/nextjs-conventions.md" "nextjs-conventions"
-check_file "$TEMPLATES/skills/common/typescript-standards.md" "typescript-standards"
-check_file "$TEMPLATES/skills/common/git-workflow.md" "git-workflow"
-check_file "$TEMPLATES/skills/generic/general-conventions.md" "general-conventions"
-
-echo ""
-echo "=== Agent templates ==="
-check_file "$TEMPLATES/agents/planner.md" "planner"
-check_file "$TEMPLATES/agents/reviewer.md" "reviewer"
-check_file "$TEMPLATES/agents/researcher.md" "researcher"
-check_file "$TEMPLATES/agents/debugger.md" "debugger"
-
-echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1
 ```
@@ -745,11 +620,11 @@ git commit -m "test: add template validation tests for init"
 After completing Plan 2, you have:
 - ✅ CLAUDE.md templates (base + 3 frameworks + generic) — composable
 - ✅ .claudeignore templates per language
-- ✅ Skill seed templates for /skill-builder
-- ✅ Agent templates (planner, reviewer, researcher, debugger)
+- ✅ ~~Skill seed templates~~ REMOVED — marketplace-first approach
+- ✅ ~~Agent templates~~ REMOVED — marketplace-first approach
 - ✅ Dev hooks (auto-lint, auto-typecheck)
 - ✅ Dev commands (/harnesskit:test, :lint, :typecheck, :dev)
-- ✅ `init.md` skill — orchestrates all file generation
-- ✅ Template validation tests
+- ✅ `init.md` skill — orchestrates marketplace discovery + harness generation
+- ✅ Template validation tests (updated: no skill/agent template assertions)
 
 **Next:** Plan 3 — Hooks System (Session Management + Guardrails)

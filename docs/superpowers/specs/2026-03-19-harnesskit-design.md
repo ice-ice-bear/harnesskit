@@ -41,10 +41,10 @@ HarnessKit의 핵심 원칙: **이미 검증된 marketplace plugin이 있으면 
 
 | 영역 | 기존 강력 plugin 있음 | 없거나 부족함 |
 |------|---------------------|-------------|
-| **Skills** | marketplace skill 설치 추천 + repo 맞춤 설정 | `/skill-builder`로 생성 |
+| **Skills** | marketplace skill 설치 → 사용 패턴 기반 커스터마이즈 (`/skill-builder`) | marketplace에 없는 영역만 `/skill-builder`로 생성 |
 | **Code Review** | `/simplify`, `/review`, `/security-review` 등 추천 | 자체 생성하지 않음 (v2에서 내재화 검토) |
-| **Hooks** | marketplace hook plugin 있으면 추천 | seed 템플릿 기반 생성 |
-| **Agents** | marketplace agent 있으면 추천 | 템플릿 기반 설치 (v2에서 `/skill-builder` 생성) |
+| **Hooks** | marketplace hook plugin 있으면 추천 | 자체 hook 제공 (session, guardrails) |
+| **Agents** | marketplace agent 설치 → 사용 패턴 기반 커스터마이즈 | marketplace에 없는 영역만 `/skill-builder`로 생성 (v2) |
 | **Commands** | marketplace 명령어 있으면 추천 | 자체 dev command 제공 |
 
 `/harnesskit:insights`가 사용 패턴을 관찰하며:
@@ -55,7 +55,7 @@ HarnessKit의 핵심 원칙: **이미 검증된 marketplace plugin이 있으면 
 
 **v1 — Adaptive Harness Foundation**:
 - Repo 감지 → 프리셋 → Harness 인프라 생성 (CLAUDE.md, feature_list, progress, failures)
-- Harness Toolkit 생성: repo 맞춤 skills + dev hooks + marketplace 추천 + agent 추천/설치
+- Harness Toolkit 구성: marketplace plugin 탐색/설치 + dev hooks + 추천 (skills/agents는 marketplace 우선, 부족 시 `/skill-builder`)
 - 세션 관리 hooks (브리핑, 가드레일, 로그)
 - Insights 관찰 + 개선 루프 (harness 인프라 + toolkit 모두 대상)
 
@@ -126,32 +126,7 @@ harnesskit/
 │   │   ├── beginner.json               # 가드레일 강, 브리핑 상세
 │   │   ├── intermediate.json           # 균형
 │   │   └── advanced.json               # 최소 개입
-│   ├── skills/                         # repo 맞춤 skill 템플릿
-│   │   ├── nextjs/
-│   │   │   ├── nextjs-conventions.md
-│   │   │   ├── nextjs-testing.md
-│   │   │   └── nextjs-performance.md
-│   │   ├── python-fastapi/
-│   │   │   ├── fastapi-conventions.md
-│   │   │   ├── fastapi-testing.md
-│   │   │   └── fastapi-error-handling.md
-│   │   ├── react-vite/
-│   │   │   ├── react-conventions.md
-│   │   │   └── react-testing.md
-│   │   ├── python-django/
-│   │   │   ├── django-conventions.md
-│   │   │   └── django-testing.md
-│   │   ├── common/
-│   │   │   ├── typescript-standards.md
-│   │   │   ├── git-workflow.md
-│   │   │   └── code-style.md
-│   │   └── generic/
-│   │       └── general-conventions.md
-│   └── agents/                         # agent 템플릿
-│       ├── planner.md
-│       ├── reviewer.md
-│       ├── researcher.md
-│       └── debugger.md
+│   └── (no skill/agent templates — marketplace-first approach)
 │
 ├── scripts/
 │   ├── detect-repo.sh                  # repo 속성 감지
@@ -329,14 +304,10 @@ user-project/
     ├── detected.json                   # repo 감지 스냅샷
     ├── failures.json                   # 실패 학습 (append-only)
     ├── insights-history.json           # 제안 승인/거절 이력
-    ├── skills/                         # repo 맞춤 skill 파일 (setup이 생성)
-    │   ├── nextjs-conventions.md
-    │   ├── nextjs-testing.md
-    │   ├── typescript-standards.md
-    │   └── git-workflow.md
-    ├── agents/                         # 사용자가 선택한 agent (setup이 생성)
-    │   ├── planner.md
-    │   └── researcher.md
+    ├── skills/                         # insights가 /skill-builder로 생성한 커스텀 skill (marketplace 커스터마이즈 또는 신규)
+    │   └── (초기에는 비어 있음 — marketplace plugin 사용 후 필요 시 생성)
+    ├── agents/                         # insights가 추천/생성한 커스텀 agent
+    │   └── (초기에는 비어 있음 — marketplace agent 사용 후 필요 시 생성)
     ├── session-logs/                   # 세션별 로그 (.gitignore)
     └── backup/                         # 덮어쓰기 백업 (.gitignore)
 ```
@@ -678,129 +649,101 @@ Shell 스크립트로 파일 읽기만 수행 (토큰 최소):
 
 Harness Engineering의 본체는 인프라(feature_list, progress, failures)가 아니라 **실제 코딩을 돕는 skills, hooks, agents, commands**다. HarnessKit은 repo 감지 결과에 따라 이 toolkit을 자동 생성한다.
 
-### 9.1 Setup 시 Toolkit 구성 — "Curate First, Create Second"
+### 9.1 Setup 시 Toolkit 구성 — "Marketplace First, Customize Later"
 
-모든 영역에서 **marketplace에 검증된 plugin이 있으면 먼저 추천**하고, 없는 영역만 자체 생성한다:
+모든 영역에서 **marketplace에 검증된 plugin을 먼저 탐색/설치**한다. 자체 생성은 하지 않는다. 커스터마이즈는 insights가 사용 패턴을 분석한 후 `/skill-builder`를 통해 수행한다:
 
 ```
 /harnesskit:setup (Next.js + TypeScript + Vitest 감지)
   │
   ├── [A] Skills
-  │     ├─ marketplace에 해당 프레임워크 skill plugin 있는가?
-  │     │    ├─ Yes → 설치 추천 + repo 맞춤 설정 안내
-  │     │    └─ No  → /skill-builder로 seed 기반 생성
-  │     └─ 공통 skill (git-workflow, code-style)은 /skill-builder로 생성
+  │     ├─ marketplace에서 프레임워크 매칭 skill plugin 탐색
+  │     │    ├─ 있음 → 설치 추천 (사용자 선택)
+  │     │    └─ 없음 → 기록만 (insights가 나중에 /skill-builder로 생성 제안)
+  │     └─ 초기에는 marketplace plugin만 사용, 커스텀 skill 생성 안함
   │
   ├── [B] Dev Hooks
-  │     ├─ marketplace에 lint/typecheck hook plugin 있는가?
-  │     │    ├─ Yes → 설치 추천
-  │     │    └─ No  → seed 템플릿 기반 생성
-  │     └─ harness 전용 hooks (session-start, guardrails, session-end)는 항상 자체
+  │     ├─ harness 전용 hooks (session-start, guardrails, session-end)는 항상 자체
+  │     └─ dev hooks (lint, typecheck, pre-commit-test)도 자체 제공
   │
   ├── [C] Dev Commands
-  │     ├─ marketplace에 test/lint 명령어 plugin 있는가?
-  │     │    ├─ Yes → 추천 (단, failures.json 연동은 자체 래핑)
-  │     │    └─ No  → 자체 skill로 제공
-  │     └─ HarnessKit 연동 래핑: marketplace 명령어를 감싸서 failures.json 기록 추가
+  │     └─ 자체 skill로 제공 (/harnesskit:test, :lint, :typecheck, :dev)
+  │        HarnessKit 생태계(failures.json 등)와 연동
   │
   ├── [D] Code Review / Security
   │     └─ 항상 marketplace 추천 (/simplify, /review, /security-review 등)
   │        자체 구현하지 않음
   │
   └── [E] Agents
-        ├─ marketplace에 planner/reviewer/researcher agent 있는가?
-        │    ├─ Yes → 설치 추천
-        │    └─ No  → 템플릿 기반 설치 (사용자 선택)
-        └─ v2: /skill-builder로 프로젝트 맞춤 agent 생성
+        ├─ marketplace에서 매칭 agent plugin 탐색
+        │    ├─ 있음 → 설치 추천 (사용자 선택)
+        │    └─ 없음 → 기록만 (v2에서 insights 기반 자동 생성)
+        └─ 초기에는 marketplace agent만 사용, 자체 생성 안함
 ```
 
-### 9.2 [A] Repo 맞춤 Skills 생성 — `/skill-builder` 활용
+**커스터마이즈 타이밍**: setup 시점이 아닌 `/harnesskit:insights` 실행 후. 사용 패턴과 에러율을 기반으로 marketplace plugin을 프로젝트에 맞게 fork/수정하거나, marketplace에 없는 영역에 대해 새 skill을 생성한다.
 
-Skills는 단순 템플릿 복사가 아니라, **`/skill-builder`를 활용하여 생성**한다. 이를 통해 skill의 품질 검증, 트리거 정확도 최적화, eval 기반 개선이 가능하다.
+### 9.2 [A] Skills — Marketplace First, Customize Later
 
-#### Skill 생성 흐름
+Skills는 자체 생성하지 않고, **marketplace에서 검증된 plugin을 먼저 탐색/설치**한다. 커스터마이즈는 사용 패턴 데이터가 축적된 후 `/skill-builder`를 통해 수행한다.
+
+#### Setup 시 Skill 구성 흐름
 
 ```
 /harnesskit:setup → repo 감지 완료
   │
   ├── 감지 결과 (nextjs + typescript + vitest)를 기반으로
-  │   필요한 skill 목록 결정
+  │   marketplace에서 매칭 skill plugin 탐색
   │
-  ├── 각 skill에 대해:
-  │   ① 플러그인 내 seed 템플릿 로드 (초기 뼈대)
-  │   ② /skill-builder에 전달:
-  │      - seed 템플릿 + detected.json + 프리셋 정보
-  │      - "이 프로젝트에 맞는 Next.js conventions skill을 생성해주세요"
-  │   ③ /skill-builder가 skill 생성 + description 최적화 + 기본 eval 실행
-  │   ④ 생성된 skill을 .harnesskit/skills/에 저장
+  ├── 발견된 plugin:
+  │   ① 사용자에게 추천 목록 표시
+  │   ② 사용자 선택 시 설치
+  │   ③ .harnesskit/config.json의 installedPlugins에 기록
   │
-  └── CLAUDE.md에 생성된 skill 참조 추가
+  ├── 매칭 plugin 없는 영역:
+  │   ① gap으로 기록 (.harnesskit/config.json의 uncoveredAreas)
+  │   ② insights가 나중에 사용 패턴 기반으로 /skill-builder 생성 제안
+  │
+  └── 초기에는 .harnesskit/skills/ 비어 있음
 ```
 
-#### /skill-builder 연동의 장점
-
-| 단순 템플릿 복사 | /skill-builder 활용 |
-|-----------------|-------------------|
-| 범용 내용 그대로 | 프로젝트 구조에 맞춘 내용 |
-| description 최적화 없음 | 트리거 정확도 최적화 |
-| 품질 검증 없음 | eval 실행으로 품질 확인 |
-| 업데이트 = 템플릿 교체 | insights → /skill-builder로 점진 개선 |
-
-#### Insights와의 연동
+#### 커스터마이즈 흐름 (Insights 연동)
 
 ```
 /harnesskit:insights 분석 결과:
-  "nextjs-conventions.md에 Image 최적화 규칙이 없습니다"
+  "Next.js Image 최적화 실수가 5세션 연속 반복됩니다.
+   설치된 conventions plugin이 이를 커버하지 않습니다."
+  → 제안: skill_customization — marketplace plugin 기반 커스텀 skill 생성
   → /harnesskit:apply 승인 시:
-    → /skill-builder를 호출하여 기존 skill을 개선
-    → eval 실행으로 개선 결과 검증
-    → 검증 통과 시 .harnesskit/skills/에 업데이트
+    → /skill-builder에 전달: 설치된 plugin + detected.json + 에러 패턴 데이터
+    → /skill-builder가 프로젝트 맞춤 skill 생성 + eval 검증
+    → .harnesskit/skills/에 저장
+    → CLAUDE.md에 참조 추가
 ```
 
-v2에서는 insights가 새 skill 자동 생성도 `/skill-builder`를 통해 수행한다 (Section 1.6 참조).
-
-#### Seed 템플릿 (플러그인 내부)
-
-seed 템플릿은 `/skill-builder`에게 전달하는 초기 뼈대다. `/skill-builder`가 이를 프로젝트에 맞게 확장/수정한다:
 ```
-harnesskit/templates/skills/
-├── nextjs/
-│   ├── nextjs-conventions.md      # App Router, Server Component, 라우팅 규칙
-│   ├── nextjs-testing.md          # Vitest/Jest + React Testing Library 패턴
-│   └── nextjs-performance.md      # Image 최적화, 번들 사이즈, Core Web Vitals
-├── python-fastapi/
-│   ├── fastapi-conventions.md     # 라우터 구조, Pydantic v2, 응답 형식
-│   ├── fastapi-testing.md         # pytest + httpx 패턴
-│   └── fastapi-error-handling.md  # 커스텀 Exception, 에러 응답 표준
-├── react-vite/
-│   ├── react-conventions.md       # 컴포넌트 구조, 상태 관리, hooks 패턴
-│   └── react-testing.md           # Vitest + Testing Library
-├── python-django/
-│   ├── django-conventions.md
-│   └── django-testing.md
-├── common/
-│   ├── typescript-standards.md    # 타입 컨벤션, strict mode 규칙
-│   ├── git-workflow.md            # 브랜치 전략, 커밋 메시지 규칙
-│   └── code-style.md             # 네이밍, 파일 구조, import 정리
-└── generic/
-    └── general-conventions.md     # 감지 실패 시 범용 규칙
+/harnesskit:insights 분석 결과:
+  "에러 핸들링 패턴이 반복됩니다. marketplace에 적합한 plugin이 없습니다."
+  → 제안: skill_creation — 새 skill 생성
+  → /harnesskit:apply 승인 시:
+    → /skill-builder에 전달: detected.json + 에러 패턴 + 사용 데이터
+    → .harnesskit/skills/error-handling.md 생성
 ```
 
-**사용자 프로젝트에 생성되는 예시 (Next.js)**:
-```
-user-project/.harnesskit/skills/
-├── nextjs-conventions.md          # 템플릿에서 복사
-├── nextjs-testing.md              # 템플릿에서 복사
-├── typescript-standards.md        # 공통 템플릿에서 복사
-└── git-workflow.md                # 공통 템플릿에서 복사
-```
+#### Marketplace vs 자체 생성 비교
 
-**CLAUDE.md에서의 참조 (Lazy Loading)**:
+| Marketplace plugin 그대로 | Insights 후 /skill-builder 커스터마이즈 |
+|--------------------------|---------------------------------------|
+| 범용, 검증됨 | 프로젝트 에러 패턴 반영 |
+| 즉시 사용 가능 | 데이터 축적 후 생성 |
+| 업데이트는 marketplace 관리 | insights → /skill-builder로 점진 개선 |
+| 모든 프로젝트에 동일 | 사용자의 실수 패턴에 맞춤 |
+
+**CLAUDE.md에서의 참조 (Lazy Loading)** — 커스텀 skill 생성 후:
 ```markdown
 ## Skills 참조
-- Next.js 컨벤션 → .harnesskit/skills/nextjs-conventions.md
-- 테스트 패턴 → .harnesskit/skills/nextjs-testing.md
-- TypeScript 표준 → .harnesskit/skills/typescript-standards.md
+- 에러 핸들링 패턴 → .harnesskit/skills/error-handling.md
+- Image 최적화 규칙 → .harnesskit/skills/nextjs-image-rules.md
 ```
 
 Claude는 관련 작업 시에만 해당 skill 파일을 읽는다 (매 세션 전체 로드 아님).
@@ -877,35 +820,25 @@ setup 완료 시 repo에 맞는 marketplace 플러그인을 추천한다:
 
 설치된 플러그인 목록은 `.harnesskit/config.json`의 `installedPlugins` 필드에 기록. 이후 insights가 사용 빈도를 관찰.
 
-### 9.6 [E] Agent 추천 + 선택 설치
+### 9.6 [E] Agent — Marketplace First
 
-v1에서는 **추천 + 템플릿 기반 설치**. 자동 생성은 v2.
+v1에서는 **marketplace agent plugin을 탐색/추천**. 자체 템플릿을 제공하지 않는다.
 
 ```
-🤖 추천 Agent:
+🤖 Marketplace Agent 추천:
 
-  [1] planner.md — 구현 전 세부 계획 수립 (수정 파일, 순서, 위험요소)
-  [2] reviewer.md — 코드 리뷰 (marketplace /review가 없는 경우)
-  [3] researcher.md — 최신 API 문서, 라이브러리 정보 조사
+  감지 결과 기반으로 marketplace에서 매칭 agent plugin을 탐색합니다.
 
-  설치할 agent를 선택하세요 (1,2,3 또는 all/none):
-```
+  [1] {marketplace-planner-plugin} — 구현 전 세부 계획 수립
+  [2] {marketplace-reviewer-plugin} — 코드 리뷰 (또는 /review 추천)
+  [3] {marketplace-researcher-plugin} — API 문서/라이브러리 조사
 
-선택된 agent는 `.harnesskit/agents/`에 템플릿에서 복사:
-```
-user-project/.harnesskit/agents/
-├── planner.md         # 사용자가 선택한 경우만
-└── researcher.md      # 사용자가 선택한 경우만
+  설치할 agent를 선택하세요 (번호 또는 all/none):
 ```
 
-**플러그인 내 agent 템플릿**:
-```
-harnesskit/templates/agents/
-├── planner.md           # 구현 계획 수립 전문
-├── reviewer.md          # 코드 리뷰 전문
-├── researcher.md        # 문서/API 조사 전문
-└── debugger.md          # 에러 분석 + 수정 전문
-```
+매칭 agent가 marketplace에 없는 경우 → gap으로 기록. v2에서 insights 기반 `/skill-builder`를 통해 프로젝트 맞춤 agent 자동 생성.
+
+초기에는 `.harnesskit/agents/` 비어 있음. 커스텀 agent는 insights 분석 후 필요 시 생성.
 
 ### 9.7 Insights의 Toolkit 개선 범위 (v1)
 
@@ -913,13 +846,13 @@ insights는 harness 인프라뿐 아니라 **toolkit도 개선 대상**이다. S
 
 | 대상 | 제안 유형 | 실행 방법 | 예시 |
 |------|----------|----------|------|
-| **Skills** | 내용 수정/추가 | `/skill-builder`로 기존 skill 개선 + eval 검증 | "nextjs-conventions.md에 Image 최적화 규칙 추가 권장" |
-| **Skills** | 새 skill 생성 | `/skill-builder`로 seed 기반 생성 + eval 검증 | "에러 핸들링 패턴이 반복됩니다, error-handling.md skill 생성 권장" |
+| **Skills** | marketplace plugin 커스터마이즈 | `/skill-builder`로 marketplace plugin 기반 커스텀 skill 생성 + eval 검증 | "설치된 conventions plugin이 Image 최적화를 커버하지 않습니다, 커스텀 skill 생성 권장" |
+| **Skills** | 새 skill 생성 (marketplace 부재 시) | `/skill-builder`로 사용 데이터 기반 생성 + eval 검증 | "에러 핸들링 패턴이 반복됩니다, error-handling.md skill 생성 권장" |
 | **Dev Hooks** | 활성화/비활성화 | settings.json 직접 수정 | "typecheck hook이 매번 실패 후 무시됩니다, 비활성화할까요?" |
 | **Dev Hooks** | 설정 조정 | settings.json 직접 수정 | "lint hook이 너무 느립니다, --cache 옵션 추가 권장" |
 | **Dev Commands** | 옵션 조정 | skill 파일 수정 | "/harnesskit:test에 --watch 모드 추가 권장" |
 | **Marketplace** | 추가 추천 | 사용자에게 안내 | "코드 리뷰를 자주 요청합니다, /review 플러그인 설치 권장" |
-| **Agents** | 추가 추천 | 템플릿에서 복사 (v2: `/skill-builder`로 생성) | "API 조사에 시간이 많이 걸립니다, researcher agent 설치 권장" |
+| **Agents** | 추가 추천 | marketplace agent 추천 (v2: `/skill-builder`로 커스텀 생성) | "API 조사에 시간이 많이 걸립니다, marketplace researcher agent 설치 권장" |
 
 ---
 
@@ -934,8 +867,8 @@ insights는 harness 인프라뿐 아니라 **toolkit도 개선 대상**이다. S
 | **docs/feature_list.json** | setup (빈 골격) | 사용자/Claude | 프로젝트의 기능 목록과 완료 상태. passes:false→true 전환이 진행 추적의 핵심. 에이전트의 "할 일 목록" |
 | **progress/claude-progress.txt** | setup | Claude (매 세션 종료) | 세션 간 핸드오프 노트. 다음 세션의 Claude가 "어디까지 왔는가"를 즉시 파악. 인수인계 문서 |
 | **.claude/settings.json** | setup (hooks 등록) | insights→apply (hook 추가/제거) | Claude Code의 동작 제어. 가드레일, dev hooks, 세션 관리 hooks 등록. 프로젝트의 "자동화 설정" |
-| **.harnesskit/skills/*.md** | setup (템플릿 복사) | insights→apply (내용 수정) | 프레임워크 특화 지식. Claude가 관련 작업 시 참조. 출력 품질과 일관성에 직접 영향 |
-| **.harnesskit/agents/*.md** | setup (사용자 선택) | v2에서 insights 자동 생성 | 역할 특화 AI 인스턴스 정의. planner는 계획 품질, reviewer는 리뷰 품질에 영향 |
+| **.harnesskit/skills/*.md** | insights→apply (`/skill-builder` 생성) | insights→apply (내용 수정) | 프로젝트 맞춤 커스텀 skill. 초기에는 비어 있음 — marketplace plugin 사용 후 사용 패턴 기반으로 생성. 출력 품질과 일관성에 직접 영향 |
+| **.harnesskit/agents/*.md** | v2에서 insights 자동 생성 | v2에서 insights 자동 생성 | 역할 특화 AI 인스턴스. 초기에는 비어 있음 — marketplace agent 사용 후 필요 시 생성 |
 | **.harnesskit/config.json** | setup | insights→apply, reset | 프리셋, 감지 결과, 설치된 플러그인 목록. 모든 hook과 skill의 동작을 결정하는 중앙 설정 |
 | **.harnesskit/detected.json** | setup | reset (재감지) | repo 속성 스냅샷. 템플릿 선택, 추천 로직의 입력 데이터 |
 | **.harnesskit/failures.json** | Stop hook (자동) | insights→apply (rootCause 보강) | 실패 학습 저장소. 같은 실수 반복 방지. 세션 시작 시 관련 실패 경고 제공 |
@@ -1032,7 +965,7 @@ insights는 harness 인프라뿐 아니라 **toolkit도 개선 대상**이다. S
 
 ### 10.3 확장성
 
-- 새 프레임워크 지원 = 템플릿 파일 추가
+- 새 프레임워크 지원 = marketplace plugin 탐색 로직 확장
 - 프리셋 커스터마이징 = config.json의 overrides 필드
 - 바이블 가이드라인은 추후 별도 문서로 취합 (블로그 + 관련 영상 + 추가 자료)
 - A/B 테스트는 `/skill-builder` 연동으로 후순위 구현

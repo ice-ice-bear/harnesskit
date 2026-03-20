@@ -29,10 +29,10 @@ Apply? (y/n/edit)
 
 3. Process user response:
    - **y (yes)**: Apply the change
-     - For skill improvements (type=skill_improvement or skill_creation): invoke `/skill-builder` with the proposal context
+     - For skill customization (type=skill_customization): invoke `/skill-builder` to fork/customize the installed marketplace plugin with project-specific rules
+     - For skill creation (type=skill_creation): invoke `/skill-builder` with usage data context — only when no marketplace plugin covers the gap
      - For file edits (CLAUDE.md, .claudeignore, config.json, etc.): apply directly using Edit tool
-     - For marketplace recommendations: show install command, ask if user wants to run it
-     - For agent recommendations: copy template to `.harnesskit/agents/`
+     - For plugin recommendations (type=plugin_recommendation): run marketplace install command
    - **n (no)**: Skip, ask for optional rejection reason
    - **edit**: Let user modify the proposal, then apply modified version
 

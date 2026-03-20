@@ -47,36 +47,45 @@ Merge HarnessKit hooks into existing `.claude/settings.json`:
 
 Preserve any existing hooks (append to arrays).
 
-### 3. Skills via /skill-builder ("Curate, Don't Reinvent")
+### 3. Marketplace Plugin Discovery ("Curate, Don't Reinvent")
 
-For each skill needed based on detected framework:
-1. Check if a suitable marketplace skill plugin exists → recommend installation
-2. If not available: load seed template from `templates/skills/{framework}/`
-3. Pass seed + detected.json to `/skill-builder` for project-customized generation
-4. Save to `.harnesskit/skills/`
-5. Add reference to CLAUDE.md
+Search the Claude Code marketplace for plugins matching the detected project:
 
-### 4. Agent Recommendations
+**Skills:**
+1. Search for framework-specific skill plugins (e.g., Next.js conventions, Python testing)
+2. Search for common skill plugins (e.g., code style, git workflow, TypeScript standards)
+3. Recommend and install matching plugins directly — do NOT create custom skills at init time
+4. If marketplace has nothing for a critical gap: note it for future `/harnesskit:insights` to address via `/skill-builder`
 
-Present available agents from `templates/agents/`:
-```
-🤖 Recommended Agents:
-  [1] planner — Implementation planning before coding
-  [2] reviewer — Code review (or use marketplace /review)
-  [3] researcher — API docs and library research
-  [4] debugger — Error analysis and fix suggestions
+**Agents:**
+1. Search for agent plugins matching project needs (e.g., planner, reviewer, debugger, researcher)
+2. Recommend and install matching plugins directly — do NOT use built-in templates
+3. For code review: prefer well-established marketplace plugins (e.g., `/review`)
 
-  Install which? (1,2,3,4 / all / none):
-```
-
-Copy selected agents to `.harnesskit/agents/`.
-
-### 5. Marketplace Recommendations
-
-Based on detected.json, recommend marketplace plugins:
+**General recommendations** based on detected.json:
 - All projects: `/simplify`
 - Git remote detected: `/review`
 - API project (fastapi/nextjs api routes): `/security-review`
+
+Present all recommendations together:
+```
+📦 Marketplace Plugins for {framework} project:
+
+  Skills:
+    [1] plugin-name — description (install? y/n)
+    [2] plugin-name — description (install? y/n)
+
+  Agents:
+    [3] plugin-name — description (install? y/n)
+    [4] plugin-name — description (install? y/n)
+
+  General:
+    [5] /simplify — code quality (install? y/n)
+    [6] /review — code review (install? y/n)
+```
+
+Customization happens later: as `/harnesskit:insights` detects usage patterns and error rates,
+it proposes project-specific skill/agent creation or customization via `/skill-builder`.
 
 ### 6. Summary
 
