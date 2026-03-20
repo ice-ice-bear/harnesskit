@@ -120,3 +120,17 @@ Output a summary of everything created:
 
 🚀 Next: Add features to docs/feature_list.json and start coding!
 ```
+
+### Migration from v1
+
+If `.harnesskit/config.json` exists but has no `schemaVersion` or `schemaVersion < "2.0"`:
+1. This is a v1 project upgrading to v2a
+2. Do NOT re-run full setup — preserve all existing data
+3. Add missing v2a fields to existing config.json (non-destructive merge):
+   - Add `schemaVersion: "2.0"`
+   - Add `uncoveredAreas: []` (will be populated by next insights run)
+   - Add `reviewInternalization: {"stage": "marketplace_only", "supplementSince": null, "coveragePercent": null}`
+   - Add `customHooks: []`, `customSkills: []`, `customAgents: []`
+   - Add `removedPlugins: []`
+4. Update CLAUDE.md with v2a logging rules (append tool usage logging section from base.md template)
+5. Output: "✅ Migrated to v2a schema. Existing data preserved."
