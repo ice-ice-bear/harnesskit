@@ -128,19 +128,22 @@ harnesskit/
 
 ## Generated Files / 생성 파일
 
-When you run `/harnesskit:setup`, HarnessKit generates files in your project's `.claude/` directory:
+When you run `/harnesskit:setup`, HarnessKit generates these files in your project:
 
 | File | Purpose |
 |------|---------|
-| `.claude/settings.json` | Claude Code settings with harness overrides |
-| `.claude/harnesskit.json` | Harness config — preset, detected stack, feature flags |
-| `.claude/hooks/session-start.sh` | Pre-session hook — loads context, checks environment |
-| `.claude/hooks/session-end.sh` | Post-session hook — logs metrics, detects patterns |
-| `.claude/hooks/guardrails.sh` | Guardrail hook — enforces preset rules |
-| `.claude/data/sessions/` | Session observation logs (gitignored) |
-| `.claude/data/proposals/` | Improvement proposals from insights |
+| `CLAUDE.md` | Session protocol + framework conventions (composed from templates) |
+| `.claudeignore` | Context exclusion patterns per language |
+| `.claude/settings.json` | Hook registrations (session-start, guardrails, session-end) |
+| `docs/feature_list.json` | Feature tracking (`passes: false` pattern) |
+| `progress/claude-progress.txt` | Session-to-session work continuity |
+| `.harnesskit/config.json` | Preset, schema version, installed plugins, custom toolkit |
+| `.harnesskit/detected.json` | Auto-detected repo properties |
+| `.harnesskit/failures.json` | Error pattern tracking across sessions |
+| `.harnesskit/session-logs/` | Per-session observation data (tool usage, time distribution) |
+| `.harnesskit/bible.md` | Curated harness engineering principles reference |
 
-All generated files respect your chosen preset. Data files are automatically added to `.gitignore`.
+All generated files respect your chosen preset.
 
 ## How the Improve Loop Works / 개선 루프
 
@@ -169,16 +172,11 @@ Contributions are welcome.
 
 ```bash
 # Clone
-git clone https://github.com/your-org/HarnessKit.git
+git clone https://github.com/ice-ice-bear/HarnessKit.git
 cd HarnessKit
 
-# Run tests
-cd harnesskit && ./tests/run.sh
-
-# Structure
-# - Skills go in harnesskit/skills/
-# - Hooks go in harnesskit/hooks/
-# - Scripts go in harnesskit/scripts/
+# Run all tests (89 tests across 8 suites)
+for t in harnesskit/tests/test-*.sh; do bash "$t"; done
 ```
 
 Please open an issue before submitting large changes.
