@@ -116,14 +116,18 @@ Choose a preset during `/harnesskit:setup` based on your comfort level:
 ### Plugin Structure
 
 ```
-harnesskit/
-├── plugin.json          # Plugin manifest
-├── skills/              # 11 skill definitions (setup, insights, apply, ...)
+HarnessKit/
+├── .claude-plugin/
+│   └── plugin.json      # Plugin manifest (v0.2.0)
+├── skills/              # 11 skill definitions
 ├── agents/              # Orchestrator agent
 ├── hooks/               # Session hooks (bash + jq)
 ├── scripts/             # Detection & utility scripts
-├── templates/           # Config templates per preset
-└── tests/               # Plugin tests
+├── templates/           # Config templates, presets, bible
+├── tests/               # 89 tests across 8 suites
+├── docs/                # Design specs, plans, research
+├── README.md
+└── LICENSE
 ```
 
 ## Generated Files / 생성 파일
@@ -176,7 +180,7 @@ git clone https://github.com/ice-ice-bear/HarnessKit.git
 cd HarnessKit
 
 # Run all tests (89 tests across 8 suites)
-for t in harnesskit/tests/test-*.sh; do bash "$t"; done
+for t in tests/test-*.sh; do bash "$t"; done
 ```
 
 Please open an issue before submitting large changes.

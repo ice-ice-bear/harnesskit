@@ -36,7 +36,7 @@ done
 
 echo ""
 echo "=== Test: Plugin manifest is valid ==="
-manifest="$SCRIPT_DIR/../plugin.json"
+manifest="$SCRIPT_DIR/../.claude-plugin/plugin.json"
 check "plugin.json is valid JSON" "jq empty '$manifest' 2>/dev/null"
 check "Has name field" "jq -e '.name' '$manifest' >/dev/null"
 check "Has skills array" "jq -e '.skills | length > 0' '$manifest' >/dev/null"

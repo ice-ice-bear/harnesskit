@@ -2,6 +2,12 @@
   "name": "harnesskit",
   "version": "0.2.0",
   "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
+  "author": {
+    "name": "ice-ice-bear"
+  },
+  "repository": "https://github.com/ice-ice-bear/harnesskit",
+  "license": "MIT",
+  "keywords": ["harness", "vibe-coding", "guardrails", "insights", "adaptive"],
   "skills": [
     "skills/setup.md",
     "skills/init.md",
