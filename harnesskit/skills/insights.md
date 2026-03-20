@@ -34,6 +34,9 @@ Read the following files (skip gracefully if missing):
 - Sessions per feature (velocity)
 - Feature failure rate
 - Are features too large? (multiple sessions without completion)
+- Feature switching detection: if `current-feature.txt` changed multiple times in a session (visible in session-logs), suggest worktree isolation
+  → "feat-003과 feat-005 사이를 {N}회 전환했습니다. /harnesskit:worktree를 사용하여 격리 작업을 고려해보세요."
+  ※ This is a nudge in the report output, not a separate proposal type
 
 ### 3. Guardrail Activity
 - BLOCK/WARN frequency from session logs
@@ -216,6 +219,15 @@ Same-priority tiebreak: more sessions affected → higher error/repetition count
 Rejection cooldown applies to type + target combination:
 - `skill_customization:{plugin-name}`, `agent_creation:{task-type}`, `hook_creation:{sequence-slug}`, etc.
 - Different targets of the same type are independent (rejecting one doesn't block others)
+
+### Bible Citation (v2b)
+
+When generating proposal reasons, reference `.harnesskit/bible.md` principles where applicable:
+- Read `.harnesskit/bible.md` if it exists
+- When a proposal aligns with a bible principle, cite it in the Reason field:
+  "바이블 원칙 '{section}: {principle}'에 따라, {recommendation}"
+- Bible citation is optional context — proposals are valid without it
+- Bible is reference only, not a directive source
 
 ## After Report
 
