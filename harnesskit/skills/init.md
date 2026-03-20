@@ -17,6 +17,7 @@ Based on detected framework and preset, generate:
    - Always include: `templates/claude-md/base.md`
    - Add framework template: `templates/claude-md/{framework}.md` (or generic.md)
    - Apply preset filter: full/concise/minimal detail level
+   - Append bible reference line: `For harness engineering principles → .harnesskit/bible.md`
    - Keep under 60 lines (Lazy Loading principle)
 
 2. **.claudeignore** — copy from `templates/claudeignore/{language}.txt` (or generic.txt)
@@ -36,14 +37,18 @@ Based on detected framework and preset, generate:
 
 6. **.harnesskit/insights-history.json** — create empty: `{"history": []}`
 
-7. **v2a fields in .harnesskit/config.json** — if `schemaVersion` is missing or < "2.0", add:
-   - `schemaVersion`: `"2.0"`
+7. **v2a fields in .harnesskit/config.json** — if `schemaVersion` is missing or < "2.1", add:
+   - `schemaVersion`: `"2.1"`
    - `uncoveredAreas`: populated during marketplace plugin discovery (areas with no matching plugin)
    - `reviewInternalization`: `{"stage": "marketplace_only", "supplementSince": null, "coveragePercent": null}`
    - `customHooks`: `[]`
    - `customSkills`: `[]`
    - `customAgents`: `[]`
    - `removedPlugins`: `[]`
+   - `bibleInstalled`: `true`
+
+8. **Bible reference** — copy `templates/bible.md` to `.harnesskit/bible.md`
+   - This is a fixed reference document, not user-modifiable
 
 ### 2. Register Hooks in .claude/settings.json
 
@@ -134,3 +139,14 @@ If `.harnesskit/config.json` exists but has no `schemaVersion` or `schemaVersion
    - Add `removedPlugins: []`
 4. Update CLAUDE.md with v2a logging rules (append tool usage logging section from base.md template)
 5. Output: "✅ Migrated to v2a schema. Existing data preserved."
+
+### Migration from v2a
+
+If `.harnesskit/config.json` has `schemaVersion: "2.0"`:
+1. This is a v2a project upgrading to v2b
+2. Copy `templates/bible.md` to `.harnesskit/bible.md`
+3. Add bible reference to CLAUDE.md (append line)
+4. Update config.json:
+   - `schemaVersion`: `"2.1"`
+   - `bibleInstalled`: `true`
+5. Output: "✅ Migrated to v2b schema. Bible installed."
