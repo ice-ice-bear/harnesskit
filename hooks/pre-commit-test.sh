@@ -15,7 +15,7 @@ PRESET="intermediate"
 [ -f ".harnesskit/config.json" ] && \
   PRESET=$(jq -r '.preset // "intermediate"' .harnesskit/config.json 2>/dev/null || echo "intermediate")
 
-PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ENABLED=$(jq -r '.devHooks.preCommitTest // false' "$PLUGIN_DIR/templates/presets/$PRESET.json" 2>/dev/null || echo "false")
 [ "$ENABLED" != "true" ] && exit 0
 

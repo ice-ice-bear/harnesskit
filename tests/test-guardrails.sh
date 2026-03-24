@@ -41,5 +41,25 @@ assert_exit "$INPUTS/bash-safe.json" 0 "npm test → PASS"
 assert_exit "$INPUTS/write-safe.json" 0 "safe write → PASS"
 
 echo ""
+echo "=== CLAUDE_PLUGIN_ROOT fallback ==="
+TMPDIR_R=$(mktemp -d)
+mkdir -p "$TMPDIR_R/.harnesskit"
+cp "$SCRIPT_DIR/fixtures/mock-config-intermediate.json" "$TMPDIR_R/.harnesskit/config.json"
+
+ACTUAL_EXIT=0
+export CLAUDE_PLUGIN_ROOT="$SCRIPT_DIR/.."
+(cd "$TMPDIR_R" && cat "$INPUTS/bash-sudo.json" | bash "$HOOK") >/dev/null 2>&1 || ACTUAL_EXIT=$?
+unset CLAUDE_PLUGIN_ROOT
+
+if [ "$ACTUAL_EXIT" -eq 2 ]; then
+  echo "  ✅ CLAUDE_PLUGIN_ROOT works (exit=$ACTUAL_EXIT)"
+  PASS=$((PASS + 1))
+else
+  echo "  ❌ CLAUDE_PLUGIN_ROOT failed (expected exit=2, got=$ACTUAL_EXIT)"
+  FAIL=$((FAIL + 1))
+fi
+rm -rf "$TMPDIR_R"
+
+echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

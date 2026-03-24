@@ -15,7 +15,7 @@ fi
 
 # Load preset guardrail rules
 PRESET_FILE=""
-PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 if [ -f "$PLUGIN_DIR/templates/presets/$PRESET.json" ]; then
   PRESET_FILE="$PLUGIN_DIR/templates/presets/$PRESET.json"
 fi
