@@ -9,6 +9,16 @@ if [ "$TOOL" != "Edit" ] && [ "$TOOL" != "Write" ]; then
   exit 0
 fi
 
+# Preset check: respect devHooks.postEditTypecheck setting
+PRESET="intermediate"
+[ -f ".harnesskit/config.json" ] && \
+  PRESET=$(jq -r '.preset // "intermediate"' .harnesskit/config.json 2>/dev/null || echo "intermediate")
+
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+# Intentionally // true: typecheck is enabled by default (opt-out)
+ENABLED=$(jq -r '.devHooks.postEditTypecheck // true' "$PLUGIN_DIR/templates/presets/$PRESET.json" 2>/dev/null || echo "true")
+[ "$ENABLED" != "true" ] && exit 0
+
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path' 2>/dev/null || echo "")
 
 case "$FILE" in

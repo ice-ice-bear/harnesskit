@@ -53,6 +53,36 @@ check "Failure recorded" "jq -e '.failures | length > 0' '$TMPDIR/.harnesskit/fa
 
 rm -rf "$TMPDIR"
 
+echo "=== Phase 5: Post-edit-lint preset check ==="
+TMPDIR5=$(mktemp -d)
+mkdir -p "$TMPDIR5/.harnesskit"
+cat > "$TMPDIR5/.harnesskit/config.json" <<'CONF'
+{"preset": "advanced"}
+CONF
+echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' > "$TMPDIR5/input.json"
+
+EXIT5=0
+export CLAUDE_PLUGIN_ROOT="$SCRIPT_DIR/.."
+(cd "$TMPDIR5" && cat input.json | bash "$HOOKS/post-edit-lint.sh") >/dev/null 2>&1 || EXIT5=$?
+check "post-edit-lint exits early on advanced preset" "[ $EXIT5 -eq 0 ]"
+unset CLAUDE_PLUGIN_ROOT
+rm -rf "$TMPDIR5"
+
+echo "=== Phase 6: Post-edit-typecheck preset check ==="
+TMPDIR6=$(mktemp -d)
+mkdir -p "$TMPDIR6/.harnesskit"
+cat > "$TMPDIR6/.harnesskit/config.json" <<'CONF'
+{"preset": "advanced"}
+CONF
+echo '{"tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' > "$TMPDIR6/input.json"
+
+EXIT6=0
+export CLAUDE_PLUGIN_ROOT="$SCRIPT_DIR/.."
+(cd "$TMPDIR6" && cat input.json | bash "$HOOKS/post-edit-typecheck.sh") >/dev/null 2>&1 || EXIT6=$?
+check "post-edit-typecheck exits early on advanced preset" "[ $EXIT6 -eq 0 ]"
+unset CLAUDE_PLUGIN_ROOT
+rm -rf "$TMPDIR6"
+
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1
