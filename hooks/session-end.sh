@@ -23,6 +23,7 @@ ERRORS="[]"
 FEATURES_COMPLETED="[]"
 FEATURES_FAILED="[]"
 TOOL_CALL_SEQUENCES="[]"
+RAW_TOOL_SEQ="[]"
 TASK_TIME_DISTRIBUTION="{}"
 PLUGIN_USAGE="{}"
 
@@ -46,20 +47,25 @@ if [ -f ".harnesskit/current-session.jsonl" ]; then
   TOOL_LINES=$(grep '"type":"tool_call"' .harnesskit/current-session.jsonl 2>/dev/null || true)
   PLUGIN_LINES=$(grep '"type":"plugin_invocation"' .harnesskit/current-session.jsonl 2>/dev/null || true)
 
-  # --- Tool call sequence detection (by tool name only, ignoring summary) ---
+  # --- 3-step sliding window with tool:summary format (v2a spec) ---
   if [ -n "$TOOL_LINES" ]; then
     TOOL_CALL_SEQUENCES=$(echo "$TOOL_LINES" | jq -s '
-      [.[] | .tool] as $tools |
-      (reduce range(0; ($tools | length) - 1) as $i (
-        {};
-        ($tools[$i] + " \u2192 " + $tools[$i+1]) as $pair |
-        .[$pair] = ((.[$pair] // 0) + 1)
-      )) as $pairs |
-      [$pairs | to_entries[] | select(.value >= 2) |
-        (.key | split(" \u2192 ")) as $seq |
-        {sequence: $seq, count: .value, context: "repeated pattern"}
-      ]
+      [.[] | (.tool + ":" + ((.summary // "")[0:30]))] as $labeled |
+      if ($labeled | length) < 3 then [] else
+        (reduce range(0; ($labeled | length) - 2) as $i (
+          {};
+          ($labeled[$i] + " \u2192 " + $labeled[$i+1] + " \u2192 " + $labeled[$i+2]) as $triple |
+          .[$triple] = ((.[$triple] // 0) + 1)
+        )) as $triples |
+        [$triples | to_entries[] |
+          (.key | split(" \u2192 ")) as $seq |
+          {sequence: $seq, count: .value, context: "repeated 3-step pattern"}
+        ]
+      end
     ' 2>/dev/null || echo "[]")
+
+    # --- Raw tool sequence for insights arbitrary-length analysis ---
+    RAW_TOOL_SEQ=$(echo "$TOOL_LINES" | jq -s '[.[] | (.tool + ":" + ((.summary // "")[0:30]))]' 2>/dev/null || echo "[]")
 
     # --- Task time distribution ---
     TASK_TIME_DISTRIBUTION=$(echo "$TOOL_LINES" | jq -s '
@@ -105,6 +111,7 @@ jq -n \
   --argjson failed "$FEATURES_FAILED" \
   --argjson errs "$ERRORS" \
   --argjson seqs "$TOOL_CALL_SEQUENCES" \
+  --argjson raw "$RAW_TOOL_SEQ" \
   --argjson dist "$TASK_TIME_DISTRIBUTION" \
   --argjson plugins "$PLUGIN_USAGE" \
   '{
@@ -117,6 +124,7 @@ jq -n \
     featuresFailed: $failed,
     errors: $errs,
     toolCallSequences: $seqs,
+    rawToolSequence: $raw,
     taskTimeDistribution: $dist,
     pluginUsage: $plugins
   }' > ".harnesskit/session-logs/$SESSION_ID.json"

@@ -35,14 +35,20 @@ echo "2026-03-20T14:30:00Z" > "$TMPDIR1/.harnesskit/session-start-time.txt"
 
 LOG1=$(ls "$TMPDIR1/.harnesskit/session-logs/"*.json 2>/dev/null | head -1)
 
+# 3-step tool:summary sequences
 SEQ_COUNT=$(jq '.toolCallSequences | length' "$LOG1" 2>/dev/null || echo "0")
-check "toolCallSequences has entries" "$SEQ_COUNT" "2"
+SEQ_HAS_ENTRIES=$([ "$SEQ_COUNT" -gt 0 ] && echo "true" || echo "false")
+check "toolCallSequences has entries" "$SEQ_HAS_ENTRIES" "true"
 
-BASH_EDIT_COUNT=$(jq '[.toolCallSequences[] | select(.sequence == ["Bash","Edit"])] | .[0].count' "$LOG1" 2>/dev/null || echo "null")
-check "Bash→Edit sequence count" "$BASH_EDIT_COUNT" "2"
+# Check for the repeated pattern: Bash:tsc --noEmit → Edit:fix type in auth.ts → Bash:tsc --noEmit
+TSC_CYCLE=$(jq '[.toolCallSequences[] | select(.sequence[0] == "Bash:tsc --noEmit" and .sequence[1] == "Edit:fix type in auth.ts" and .sequence[2] == "Bash:tsc --noEmit")] | .[0].count' "$LOG1" 2>/dev/null || echo "null")
+check "tsc→edit→tsc cycle count >= 2" "$([ "$TSC_CYCLE" != "null" ] && [ "$TSC_CYCLE" -ge 2 ] && echo true || echo false)" "true"
 
-EDIT_BASH_COUNT=$(jq '[.toolCallSequences[] | select(.sequence == ["Edit","Bash"])] | .[0].count' "$LOG1" 2>/dev/null || echo "null")
-check "Edit→Bash sequence count" "$EDIT_BASH_COUNT" "2"
+# rawToolSequence exists and is an array of tool:summary strings
+RAW_SEQ_LEN=$(jq '.rawToolSequence | length' "$LOG1" 2>/dev/null || echo "0")
+RAW_SEQ_FORMAT=$(jq '.rawToolSequence[0] | test(":")' "$LOG1" 2>/dev/null || echo "false")
+check "rawToolSequence has entries" "$([ "$RAW_SEQ_LEN" -gt 0 ] && echo true || echo false)" "true"
+check "rawToolSequence uses tool:summary format" "$RAW_SEQ_FORMAT" "true"
 
 rm -rf "$TMPDIR1"
 
@@ -65,20 +71,20 @@ echo "2026-03-20T14:30:00Z" > "$TMPDIR2/.harnesskit/session-start-time.txt"
 
 LOG2=$(ls "$TMPDIR2/.harnesskit/session-logs/"*.json 2>/dev/null | head -1)
 
-# coding = Bash:tsc(3) + Edit(2) + Write(1) = 6/9 ≈ 0.6667
+# coding = Bash:tsc(5) + Edit(3) + Write(1) = 9/12 = 0.75
 CODING=$(jq '.taskTimeDistribution.coding' "$LOG2" 2>/dev/null || echo "null")
-CODING_OK=$(jq -rn --argjson v "$CODING" 'if $v > 0.66 and $v < 0.67 then "true" else "false" end' 2>/dev/null || echo "false")
-check "coding ratio ~0.667" "$CODING_OK" "true"
+CODING_OK=$(jq -rn --argjson v "$CODING" 'if $v > 0.74 and $v < 0.76 then "true" else "false" end' 2>/dev/null || echo "false")
+check "coding ratio ~0.75" "$CODING_OK" "true"
 
-# debugging = Bash:npm test(1) = 1/9 ≈ 0.1111
+# debugging = Bash:npm test(1) = 1/12 ≈ 0.083
 DEBUGGING=$(jq '.taskTimeDistribution.debugging' "$LOG2" 2>/dev/null || echo "null")
-DEBUGGING_OK=$(jq -rn --argjson v "$DEBUGGING" 'if $v > 0.11 and $v < 0.12 then "true" else "false" end' 2>/dev/null || echo "false")
-check "debugging ratio ~0.111" "$DEBUGGING_OK" "true"
+DEBUGGING_OK=$(jq -rn --argjson v "$DEBUGGING" 'if $v > 0.08 and $v < 0.09 then "true" else "false" end' 2>/dev/null || echo "false")
+check "debugging ratio ~0.083" "$DEBUGGING_OK" "true"
 
-# research = WebSearch(2) = 2/9 ≈ 0.2222
+# research = WebSearch(2) = 2/12 ≈ 0.167
 RESEARCH=$(jq '.taskTimeDistribution.research' "$LOG2" 2>/dev/null || echo "null")
-RESEARCH_OK=$(jq -rn --argjson v "$RESEARCH" 'if $v > 0.22 and $v < 0.23 then "true" else "false" end' 2>/dev/null || echo "false")
-check "research ratio ~0.222" "$RESEARCH_OK" "true"
+RESEARCH_OK=$(jq -rn --argjson v "$RESEARCH" 'if $v > 0.16 and $v < 0.17 then "true" else "false" end' 2>/dev/null || echo "false")
+check "research ratio ~0.167" "$RESEARCH_OK" "true"
 
 # ratios sum to 1
 SUM_OK=$(jq -rn --argjson c "$CODING" --argjson d "$DEBUGGING" --argjson r "$RESEARCH" 'if ($c + $d + $r) > 0.999 and ($c + $d + $r) < 1.001 then "true" else "false" end' 2>/dev/null || echo "false")

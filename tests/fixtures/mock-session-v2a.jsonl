@@ -8,6 +8,9 @@
 {"type":"tool_call","tool":"Write","summary":"create api handler","timestamp":"14:45"}
 {"type":"tool_call","tool":"WebSearch","summary":"stripe api docs","timestamp":"14:50"}
 {"type":"tool_call","tool":"WebSearch","summary":"stripe webhook setup","timestamp":"14:55"}
+{"type":"tool_call","tool":"Bash","summary":"tsc --noEmit","timestamp":"14:57"}
+{"type":"tool_call","tool":"Edit","summary":"fix type in auth.ts","timestamp":"14:59"}
+{"type":"tool_call","tool":"Bash","summary":"tsc --noEmit","timestamp":"15:01"}
 {"type":"plugin_invocation","plugin":"review","feedback":["missing-error-boundary","no-loading-state"]}
 {"type":"plugin_invocation","plugin":"simplify","feedback":[]}
 {"type":"feature_done","id":"feat-003"}
