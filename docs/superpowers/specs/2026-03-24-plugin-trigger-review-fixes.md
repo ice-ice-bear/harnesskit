@@ -17,6 +17,18 @@
 - `claude plugin list` 없음 — `~/.claude/plugins/cache/` 디렉토리로 간접 확인 가능
 - 공식 마켓플레이스(`claude-plugins-official`) marketplace.json이 GitHub에 공개
 
+## Test Plan
+
+기존 테스트 파일들을 업데이트하고 신규 테스트를 추가:
+
+| 테스트 파일 | 변경 내용 | 관련 Fix |
+|-----------|----------|---------|
+| `tests/test-session-end-v2a.sh` | 3-step sequence + rawToolSequence 검증 추가 | 3 |
+| `tests/test-guardrails.sh` | `${CLAUDE_PLUGIN_ROOT}` 환경변수 설정 후 실행 확인 | 1+5 |
+| `tests/test-hooks-integration.sh` | post-edit-lint/typecheck 프리셋 체크 테스트 추가 | 1+5 |
+| `tests/test-init-templates.sh` | marketplace-recommendations.json 존재 및 스키마 검증 | 2 |
+| `tests/test-update-recommendations.sh` (신규) | 크롤링 스크립트 출력 스키마 검증 | 2 |
+
 ## Fix 1+5 (통합): 프리셋 체크 추가 + `${CLAUDE_PLUGIN_ROOT}` 경로 통일
 
 ### 문제
@@ -39,7 +51,10 @@ PRESET="intermediate"
 [ -f ".harnesskit/config.json" ] && \
   PRESET=$(jq -r '.preset // "intermediate"' .harnesskit/config.json 2>/dev/null || echo "intermediate")
 
-PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT}"
+# ${CLAUDE_PLUGIN_ROOT}을 우선 사용, 미설정 시 dirname fallback (로컬 테스트용)
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+# 의도적으로 // true 사용: lint는 기본 활성 (opt-out 방식)
+# pre-commit-test의 // false (opt-in)와 다른 의도임
 ENABLED=$(jq -r '.devHooks.postEditLint // true' "$PLUGIN_DIR/templates/presets/$PRESET.json" 2>/dev/null || echo "true")
 [ "$ENABLED" != "true" ] && exit 0
 ```
@@ -53,7 +68,8 @@ PRESET="intermediate"
 [ -f ".harnesskit/config.json" ] && \
   PRESET=$(jq -r '.preset // "intermediate"' .harnesskit/config.json 2>/dev/null || echo "intermediate")
 
-PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT}"
+PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+# 의도적으로 // true: typecheck는 기본 활성 (opt-out 방식)
 ENABLED=$(jq -r '.devHooks.postEditTypecheck // true' "$PLUGIN_DIR/templates/presets/$PRESET.json" 2>/dev/null || echo "true")
 [ "$ENABLED" != "true" ] && exit 0
 ```
@@ -62,14 +78,14 @@ ENABLED=$(jq -r '.devHooks.postEditTypecheck // true' "$PLUGIN_DIR/templates/pre
 
 ```diff
 - PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-+ PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT}"
++ PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ```
 
 #### `hooks/pre-commit-test.sh`
 
 ```diff
 - PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-+ PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT}"
++ PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ```
 
 #### `skills/setup/SKILL.md`
@@ -78,6 +94,16 @@ ENABLED=$(jq -r '.devHooks.postEditTypecheck // true' "$PLUGIN_DIR/templates/pre
 - bash "$(claude plugin path harnesskit)/scripts/detect-repo.sh" "$(pwd)"
 + bash "${CLAUDE_PLUGIN_ROOT}/scripts/detect-repo.sh" "$(pwd)"
 ```
+
+#### `skills/init/SKILL.md` — hook 등록 포맷
+
+init 스킬의 "Register Hooks in .claude/settings.json" 섹션에서 hook command 포맷도 통일:
+
+```
+hook command 포맷: bash ${CLAUDE_PLUGIN_ROOT}/hooks/{name}.sh
+```
+
+※ `${CLAUDE_PLUGIN_ROOT}`은 hooks/hooks.json 및 plugin.json의 hook 설정에서 자동 치환됨 (공식 문서 확인됨)
 
 ## Fix 2: 마켓플레이스 플러그인 발견 방식 재설계
 
@@ -91,80 +117,95 @@ init 스킬이 "Search the Claude Code marketplace"로만 기술되어 있지만
 
 공식 마켓플레이스(`claude-plugins-official`)에서 검증된 플러그인만 포함하는 추천 매핑 파일.
 
+모든 카테고리를 통일된 배열 형식으로 관리 (LSP 포함):
+
 ```json
 {
   "schemaVersion": "1.0",
   "lastUpdated": "2026-03-24",
   "source": "https://github.com/anthropics/claude-plugins-official",
-  "categories": {
-    "lsp": {
-      "typescript": "typescript-lsp@claude-plugins-official",
-      "python": "pyright-lsp@claude-plugins-official",
-      "go": "gopls-lsp@claude-plugins-official",
-      "rust": "rust-analyzer-lsp@claude-plugins-official",
-      "java": "jdtls-lsp@claude-plugins-official",
-      "swift": "swift-lsp@claude-plugins-official",
-      "php": "php-lsp@claude-plugins-official",
-      "ruby": "ruby-lsp@claude-plugins-official"
+  "recommendations": [
+    {
+      "plugin": "typescript-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:typescript",
+      "description": "TypeScript 코드 인텔리전스"
     },
-    "general": [
-      {
-        "plugin": "code-simplifier@claude-plugins-official",
-        "when": "always",
-        "description": "코드 품질 리뷰 + 리팩토링"
-      },
-      {
-        "plugin": "commit-commands@claude-plugins-official",
-        "when": "git",
-        "description": "Git 커밋 워크플로우"
-      }
-    ],
-    "review": [
-      {
-        "plugin": "code-review@claude-plugins-official",
-        "when": "git",
-        "description": "PR 코드 리뷰 자동화"
-      },
-      {
-        "plugin": "pr-review-toolkit@claude-plugins-official",
-        "when": "git",
-        "description": "PR 리뷰 전문 에이전트"
-      }
-    ],
-    "security": [
-      {
-        "plugin": "semgrep@claude-plugins-official",
-        "when": "always",
-        "description": "보안 취약점 실시간 감지"
-      },
-      {
-        "plugin": "security-guidance@claude-plugins-official",
-        "when": "api",
-        "description": "보안 가이드 hook"
-      }
-    ],
-    "integrations": [
-      {
-        "plugin": "github@claude-plugins-official",
-        "when": "github_remote",
-        "description": "GitHub MCP 통합"
-      },
-      {
-        "plugin": "sentry@claude-plugins-official",
-        "when": "has_sentry",
-        "description": "에러 모니터링"
-      }
-    ]
-  },
+    {
+      "plugin": "pyright-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:python",
+      "description": "Python 코드 인텔리전스"
+    },
+    {
+      "plugin": "gopls-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:go",
+      "description": "Go 코드 인텔리전스"
+    },
+    {
+      "plugin": "rust-analyzer-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:rust",
+      "description": "Rust 코드 인텔리전스"
+    },
+    {
+      "plugin": "code-simplifier@claude-plugins-official",
+      "category": "general",
+      "when": "always",
+      "description": "코드 품질 리뷰 + 리팩토링"
+    },
+    {
+      "plugin": "commit-commands@claude-plugins-official",
+      "category": "general",
+      "when": "git",
+      "description": "Git 커밋 워크플로우"
+    },
+    {
+      "plugin": "code-review@claude-plugins-official",
+      "category": "review",
+      "when": "git",
+      "description": "PR 코드 리뷰 자동화"
+    },
+    {
+      "plugin": "pr-review-toolkit@claude-plugins-official",
+      "category": "review",
+      "when": "git",
+      "description": "PR 리뷰 전문 에이전트"
+    },
+    {
+      "plugin": "semgrep@claude-plugins-official",
+      "category": "security",
+      "when": "always",
+      "description": "보안 취약점 실시간 감지"
+    },
+    {
+      "plugin": "security-guidance@claude-plugins-official",
+      "category": "security",
+      "when": "api",
+      "description": "보안 가이드 hook"
+    },
+    {
+      "plugin": "github@claude-plugins-official",
+      "category": "integrations",
+      "when": "github_remote",
+      "description": "GitHub MCP 통합"
+    }
+  ],
   "conditions": {
     "always": "모든 프로젝트",
     "git": "detected.json의 git == true",
+    "language:typescript": "detected.json의 language == typescript",
+    "language:python": "detected.json의 language == python",
+    "language:go": "detected.json의 language == go",
+    "language:rust": "detected.json의 language == rust",
     "github_remote": "git remote -v에 github.com 포함",
-    "api": "framework가 fastapi, django, nextjs 중 하나",
-    "has_sentry": "requirements.txt 또는 package.json에 sentry 패키지 포함"
+    "api": "framework가 fastapi, django, nextjs 중 하나"
   }
 }
 ```
+
+※ `has_sentry` 조건은 제거 — `detect-repo.sh`에서 지원하지 않으며, init 시점에서 패키지 의존성 파싱은 범위 초과. 향후 detect-repo.sh 확장 시 재도입 가능.
 
 #### 2-2. `scripts/update-recommendations.sh` 신규 생성
 
@@ -173,6 +214,8 @@ init 스킬이 "Search the Claude Code marketplace"로만 기술되어 있지만
 ```bash
 #!/bin/bash
 # update-recommendations.sh — 공식 마켓플레이스에서 추천 목록 갱신
+# 이 스크립트는 개발자가 수동 실행하거나 CI에서 주기적 실행
+# ${CLAUDE_PLUGIN_ROOT}이 아닌 dirname 사용: 플러그인 컨텍스트 외부에서도 실행 가능해야 하므로
 set -euo pipefail
 
 MARKETPLACE_URL="https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/.claude-plugin/marketplace.json"
@@ -186,7 +229,18 @@ if [ -z "$RAW" ]; then
   exit 1
 fi
 
-# 2. Extract all plugins with metadata
+# 2. Schema validation — marketplace.json은 .plugins[] 배열을 가져야 함
+#    각 plugin 엔트리: name(필수), description, category, keywords, tags
+#    검증된 스키마: https://code.claude.com/docs/en/plugin-marketplaces#marketplace-schema
+PLUGIN_COUNT=$(echo "$RAW" | jq '.plugins | length' 2>/dev/null || echo "0")
+if [ "$PLUGIN_COUNT" = "0" ]; then
+  echo "❌ marketplace.json has no plugins or unexpected schema" >&2
+  echo "   Expected: {plugins: [{name, description, ...}]}" >&2
+  exit 1
+fi
+echo "📦 Found $PLUGIN_COUNT plugins in marketplace"
+
+# 3. Extract all plugins with metadata
 ALL_PLUGINS=$(echo "$RAW" | jq '[.plugins[] | {
   name: .name,
   description: (.description // ""),
@@ -195,49 +249,61 @@ ALL_PLUGINS=$(echo "$RAW" | jq '[.plugins[] | {
   tags: (.tags // [])
 }]')
 
-# 3. Auto-classify into categories
-LSP=$(echo "$ALL_PLUGINS" | jq '[.[] | select(.name | endswith("-lsp"))]')
-SECURITY=$(echo "$ALL_PLUGINS" | jq '[.[] | select(
+# 4. Auto-classify — 기존 recommendations의 수동 매핑을 보존하면서
+#    새로 발견된 플러그인을 카테고리별로 출력
+LSP_NAMES=$(echo "$ALL_PLUGINS" | jq -r '[.[] | select(.name | endswith("-lsp")) | .name] | join(", ")')
+SECURITY_NAMES=$(echo "$ALL_PLUGINS" | jq -r '[.[] | select(
   .category == "Security" or
-  (.keywords | any(. == "security")) or
-  (.name | test("security|semgrep|aikido|autofix"))
-)]')
-REVIEW=$(echo "$ALL_PLUGINS" | jq '[.[] | select(
+  (.keywords // [] | any(. == "security")) or
+  (.name | test("security|semgrep|aikido"))
+) | .name] | join(", ")')
+REVIEW_NAMES=$(echo "$ALL_PLUGINS" | jq -r '[.[] | select(
   (.name | test("review|simplif")) or
   (.description | test("review|code quality"; "i"))
-)]')
+) | .name] | join(", ")')
 
-# 4. Generate recommendations.json (preserving manual condition mappings)
-# Read existing conditions from current file if it exists
+echo ""
+echo "📋 Auto-classified plugins:"
+echo "   LSP: $LSP_NAMES"
+echo "   Security: $SECURITY_NAMES"
+echo "   Review: $REVIEW_NAMES"
+echo ""
+
+# 5. Preserve existing recommendations (수동 조건 매핑 유지)
+#    이 스크립트는 allPlugins 목록만 갱신하고, recommendations 배열은 수동 관리
 if [ -f "$OUTPUT" ]; then
+  EXISTING_RECS=$(jq '.recommendations // []' "$OUTPUT")
   EXISTING_CONDITIONS=$(jq '.conditions // {}' "$OUTPUT")
 else
+  EXISTING_RECS='[]'
   EXISTING_CONDITIONS='{}'
 fi
 
-# 5. Update lastUpdated and plugin lists, preserve conditions
+# 6. 갱신: lastUpdated + allPlugins (검색용), recommendations + conditions는 보존
 jq -n \
   --arg date "$(date -u +%Y-%m-%d)" \
-  --argjson lsp "$LSP" \
-  --argjson security "$SECURITY" \
-  --argjson review "$REVIEW" \
   --argjson all "$ALL_PLUGINS" \
+  --argjson recs "$EXISTING_RECS" \
   --argjson conditions "$EXISTING_CONDITIONS" \
   '{
     schemaVersion: "1.0",
     lastUpdated: $date,
     source: "https://github.com/anthropics/claude-plugins-official",
-    allPlugins: ($all | length),
-    categories: {
-      lsp: [$lsp[] | {(.name | sub("-lsp$";"")): "\(.name)@claude-plugins-official"}] | add,
-      security: $security,
-      review: $review
-    },
+    allPlugins: $all,
+    recommendations: $recs,
     conditions: $conditions
   }' > "$OUTPUT"
 
-echo "✅ Updated $OUTPUT — $(echo "$ALL_PLUGINS" | jq length) plugins indexed"
+echo "✅ Updated $OUTPUT — $PLUGIN_COUNT plugins indexed, $(echo "$EXISTING_RECS" | jq length) recommendations preserved"
+echo ""
+echo "💡 Review auto-classified plugins above and manually add new entries to"
+echo "   recommendations[] in $OUTPUT with appropriate 'when' conditions."
 ```
+
+**스크립트 역할 분담**:
+- `allPlugins`: 크롤링으로 자동 갱신 (마켓플레이스 전체 목록)
+- `recommendations`: 수동 관리 (검증된 추천 + 조건 매핑)
+- 스크립트는 새 플러그인 발견을 보고하고, 개발자가 판단하여 recommendations에 추가
 
 개발자가 수동 실행하거나, CI에서 주기적으로 실행.
 
@@ -317,22 +383,27 @@ For `plugin_recommendation` proposals:
 
 #### `hooks/session-end.sh` — toolCallSequences 로직 교체
 
-기존 2-step pair:
+기존 2-step pair (bare tool name만 사용):
 ```bash
 ($tools[$i] + " → " + $tools[$i+1]) as $pair
 ```
 
-변경 — 3-step sliding window:
+변경 — 3-step sliding window + **tool:summary 형태** (v2a 스펙 준수):
+
+v2a 설계 스펙의 기대 형식: `["Bash:tsc --noEmit", "Edit:fix-type", "Bash:tsc --noEmit"]`
+bare tool name만으로는 `Edit → Bash → Edit`처럼 거의 모든 세션에서 나타나는 패턴이 되어 의미 있는 자동화 후보를 감지할 수 없음.
+
 ```bash
+# tool:summary 형태로 시퀀스 키 생성
 TOOL_CALL_SEQUENCES=$(echo "$TOOL_LINES" | jq -s '
-  [.[] | .tool] as $tools |
-  if ($tools | length) < 3 then [] else
-    (reduce range(0; ($tools | length) - 2) as $i (
+  [.[] | (.tool + ":" + ((.summary // "")[0:30]))] as $labeled |
+  if ($labeled | length) < 3 then [] else
+    (reduce range(0; ($labeled | length) - 2) as $i (
       {};
-      ($tools[$i] + " → " + $tools[$i+1] + " → " + $tools[$i+2]) as $triple |
+      ($labeled[$i] + " → " + $labeled[$i+1] + " → " + $labeled[$i+2]) as $triple |
       .[$triple] = ((.[$triple] // 0) + 1)
     )) as $triples |
-    [$triples | to_entries[] | select(.value >= 2) |
+    [$triples | to_entries[] |
       (.key | split(" → ")) as $seq |
       {sequence: $seq, count: .value, context: "repeated 3-step pattern"}
     ]
@@ -340,29 +411,37 @@ TOOL_CALL_SEQUENCES=$(echo "$TOOL_LINES" | jq -s '
 ' 2>/dev/null || echo "[]")
 ```
 
+**threshold 변경**: 기존 `select(.value >= 2)` 제거 — 모든 3-step 시퀀스를 기록.
+cross-session 집계는 insights가 담당 ("same sequence in 3+ sessions" 트리거).
+within-session에서 1회만 나타나는 시퀀스도 기록해야 insights가 cross-session으로 집계할 수 있음.
+
 #### session log에 `rawToolSequence` 필드 추가
+
+insights가 임의 길이 패턴을 분석할 수 있도록 raw sequence도 보존:
 
 ```bash
 RAW_TOOL_SEQ="[]"
 if [ -n "$TOOL_LINES" ]; then
-  RAW_TOOL_SEQ=$(echo "$TOOL_LINES" | jq -s '[.[] | .tool]' 2>/dev/null || echo "[]")
+  RAW_TOOL_SEQ=$(echo "$TOOL_LINES" | jq -s '[.[] | (.tool + ":" + ((.summary // "")[0:30]))]' 2>/dev/null || echo "[]")
 fi
 ```
 
-jq output에 추가:
+jq output에 추가 (session-end.sh의 jq -n 호출, 기존 line 98-122):
 ```bash
 --argjson raw "$RAW_TOOL_SEQ"
 ```
 
-JSON 구조에 추가:
+JSON 구조의 `jq -n` 템플릿에 `rawToolSequence: $raw` 추가:
 ```json
 {
-  "toolCallSequences": "...(3-step 집계)",
-  "rawToolSequence": ["Edit", "Bash", "Edit", "Bash", "Write"]
+  "toolCallSequences": [
+    {"sequence": ["Bash:tsc --noEmit", "Edit:fix-type", "Bash:tsc --noEmit"], "count": 3, "context": "repeated 3-step pattern"}
+  ],
+  "rawToolSequence": ["Edit:update-handler", "Bash:tsc --noEmit", "Edit:fix-type", "Bash:tsc --noEmit", "Write:new-file"]
 }
 ```
 
-insights는 `rawToolSequence`를 사용해 임의 길이의 반복 패턴을 분석할 수 있음.
+insights는 `rawToolSequence`를 사용해 임의 길이의 반복 패턴을 분석하고, `toolCallSequences`로 사전 집계된 3-step 패턴을 빠르게 참조할 수 있음.
 
 ## Fix 4: status 스킬에서 실제 설치 상태 검증
 
@@ -381,15 +460,22 @@ config.json의 `installedPlugins`와 실제 설치된 플러그인 상태가 불
 
 After reading installedPlugins from config.json:
 
-1. Check if `~/.claude/plugins/cache/` directory exists
+1. Check if `$HOME/.claude/plugins/cache/` directory exists
+   ※ 공식 문서 확인: 플러그인 캐시 경로는 `~/.claude/plugins/cache/` (plugins-reference#plugin-caching-and-file-resolution)
 2. If it exists, for each plugin in installedPlugins:
-   - Check if a matching directory exists under the cache
-   - Cache path pattern: `~/.claude/plugins/cache/{marketplace-name}/{plugin-name}/`
+   - Use glob search: `find $HOME/.claude/plugins/cache/ -maxdepth 2 -name "{plugin-name}" -type d`
+   - 캐시 경로 패턴은 `{marketplace-name}/{plugin-name}/{version}/` 형태로 추정되나,
+     정확한 구조는 Claude Code 버전에 따라 달라질 수 있으므로 name 기반 glob이 안전
 3. Report status per plugin:
    - ✅ {name} — installed and cached
    - ⚠️ {name} — in config but not found in cache (may need reinstall)
+   - If glob search fails or returns unexpected results, fall back to "unverified"
 
-If cache directory doesn't exist, skip verification and display config as-is.
+If cache directory doesn't exist, skip verification and display config as-is with note:
+  "(plugin cache not found — verification skipped)"
+
+If installedPlugins is empty, display:
+  "Marketplace Plugins: none installed"
 
 If mismatches found, suggest:
   "Run `/plugin install {name}@claude-plugins-official` to reinstall missing plugins,
@@ -414,12 +500,22 @@ If mismatches found, suggest:
 |------|----------|-----|
 | `hooks/post-edit-lint.sh` | 수정 — 프리셋 체크 + 경로 통일 | 1+5 |
 | `hooks/post-edit-typecheck.sh` | 수정 — 프리셋 체크 + 경로 통일 | 1+5 |
-| `hooks/guardrails.sh` | 수정 — 경로 통일 | 5 |
-| `hooks/pre-commit-test.sh` | 수정 — 경로 통일 | 5 |
-| `hooks/session-end.sh` | 수정 — 3-step window + rawToolSequence | 3 |
+| `hooks/guardrails.sh` | 수정 — 경로 fallback 통일 | 5 |
+| `hooks/pre-commit-test.sh` | 수정 — 경로 fallback 통일 | 5 |
+| `hooks/session-end.sh` | 수정 — 3-step window (tool:summary) + rawToolSequence | 3 |
 | `skills/setup/SKILL.md` | 수정 — 경로 통일 | 5 |
-| `skills/init/SKILL.md` | 수정 — 마켓플레이스 섹션 재작성 | 2 |
+| `skills/init/SKILL.md` | 수정 — 마켓플레이스 섹션 재작성 + hook 등록 포맷 | 2, 5 |
 | `skills/insights/SKILL.md` | 수정 — plugin_recommendation 로직 | 2 |
-| `skills/status/SKILL.md` | 수정 — 플러그인 검증 추가 | 4 |
-| `templates/marketplace-recommendations.json` | 신규 | 2 |
-| `scripts/update-recommendations.sh` | 신규 | 2 |
+| `skills/status/SKILL.md` | 수정 — 플러그인 검증 추가 (glob 기반) | 4 |
+| `templates/marketplace-recommendations.json` | 신규 — 통일된 배열 형식 | 2 |
+| `scripts/update-recommendations.sh` | 신규 — allPlugins 갱신 + 수동 추천 보존 | 2 |
+
+### 테스트 파일
+
+| 파일 | 변경 내용 | Fix |
+|------|----------|-----|
+| `tests/test-session-end-v2a.sh` | 3-step tool:summary sequence + rawToolSequence 검증 | 3 |
+| `tests/test-guardrails.sh` | CLAUDE_PLUGIN_ROOT fallback 테스트 | 1+5 |
+| `tests/test-hooks-integration.sh` | post-edit 프리셋 체크 테스트 | 1+5 |
+| `tests/test-init-templates.sh` | recommendations.json 스키마 검증 | 2 |
+| `tests/test-update-recommendations.sh` (신규) | 크롤링 스크립트 출력 검증 | 2 |
