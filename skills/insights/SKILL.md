@@ -191,6 +191,12 @@ Reason: {why this change helps, based on data}
 - **Cooldown key**: `plugin_recommendation:{plugin-name}`
 - **Cooldown**: 10 sessions after rejection
 
+**Data source for recommendations:**
+1. Read `${CLAUDE_PLUGIN_ROOT}/templates/marketplace-recommendations.json`
+2. Cross-reference with `config.json` `installedPlugins` — only recommend uninstalled plugins
+3. Match session usage patterns against recommendation conditions
+4. Provide exact install command: `/plugin install {name}@claude-plugins-official`
+
 ### Threshold Configuration (v2a)
 
 All thresholds scale by preset:
