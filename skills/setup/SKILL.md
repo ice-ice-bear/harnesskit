@@ -13,7 +13,7 @@ You are the HarnessKit setup assistant. Your job is to detect the project's tech
 Run the detection script:
 
 ```bash
-bash "$(claude plugin path harnesskit)/scripts/detect-repo.sh" "$(pwd)"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/detect-repo.sh" "$(pwd)"
 ```
 
 Parse the JSON output and present results to the user:

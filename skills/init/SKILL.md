@@ -53,11 +53,13 @@ Based on detected framework and preset, generate:
 ### 2. Register Hooks in .claude/settings.json
 
 Merge HarnessKit hooks into existing `.claude/settings.json`:
-- SessionStart: `session-start.sh`
-- PreToolUse: `guardrails.sh`
-- Stop: `session-end.sh`
-- PostToolUse: `post-edit-lint.sh`, `post-edit-typecheck.sh` (if preset enables)
-- PreToolUse: `pre-commit-test.sh` (if preset enables)
+
+Hook commands use `${CLAUDE_PLUGIN_ROOT}` which is auto-substituted by Claude Code:
+- SessionStart: `${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh`
+- PreToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/guardrails.sh`
+- Stop: `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh`
+- PostToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-lint.sh`, `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-typecheck.sh` (if preset enables)
+- PreToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-test.sh` (if preset enables)
 
 Preserve any existing hooks (append to arrays).
 
@@ -101,7 +103,7 @@ Present all recommendations together:
 Customization happens later: as `/harnesskit:insights` detects usage patterns and error rates,
 it proposes project-specific skill/agent creation or customization via `/skill-builder`.
 
-### 6. Summary
+### 4. Summary
 
 Output a summary of everything created:
 ```
