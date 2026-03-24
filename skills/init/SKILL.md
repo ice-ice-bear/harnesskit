@@ -65,43 +65,49 @@ Preserve any existing hooks (append to arrays).
 
 ### 3. Marketplace Plugin Discovery ("Curate, Don't Reinvent")
 
-Search the Claude Code marketplace for plugins matching the detected project:
+Read the verified recommendations from `${CLAUDE_PLUGIN_ROOT}/templates/marketplace-recommendations.json`.
 
-**Skills:**
-1. Search for framework-specific skill plugins (e.g., Next.js conventions, Python testing)
-2. Search for common skill plugins (e.g., code style, git workflow, TypeScript standards)
-3. Recommend and install matching plugins directly — do NOT create custom skills at init time
-4. If marketplace has nothing for a critical gap: note it for future `/harnesskit:insights` to address via `/skill-builder`
+**If file exists and lastUpdated < 30 days:**
+1. Match detected.json properties against recommendation conditions:
+   - `language` field → lsp category (language-specific LSP plugin)
+   - `git == true` → general/review plugins with "git" condition
+   - `framework` matches api condition (fastapi, django, nextjs) → security plugins
+   - Check `git remote -v` for github.com → github_remote condition
+2. Present matched plugins for user selection
 
-**Agents:**
-1. Search for agent plugins matching project needs (e.g., planner, reviewer, debugger, researcher)
-2. Recommend and install matching plugins directly — do NOT use built-in templates
-3. For code review: prefer well-established marketplace plugins (e.g., `/review`)
+**If file missing or stale (> 30 days):**
+1. Attempt live fetch from marketplace URL in the recommendations file
+2. If fetch fails, use hardcoded minimal list:
+   - code-simplifier@claude-plugins-official (always)
+   - commit-commands@claude-plugins-official (if git)
+   - code-review@claude-plugins-official (if git)
 
-**General recommendations** based on detected.json:
-- All projects: `/simplify`
-- Git remote detected: `/review`
-- API project (fastapi/nextjs api routes): `/security-review`
+**Always append:**
+"더 많은 플러그인은 `/plugin` → Discover 탭에서 탐색하세요."
 
-Present all recommendations together:
-```
-📦 Marketplace Plugins for {framework} project:
+**Present recommendations:**
 
-  Skills:
-    [1] plugin-name — description (install? y/n)
-    [2] plugin-name — description (install? y/n)
+    📦 Marketplace Plugins for {framework} project:
 
-  Agents:
-    [3] plugin-name — description (install? y/n)
-    [4] plugin-name — description (install? y/n)
+      LSP:
+        [1] {lsp-plugin} — 코드 인텔리전스 (install? y/n)
 
-  General:
-    [5] /simplify — code quality (install? y/n)
-    [6] /review — code review (install? y/n)
-```
+      General:
+        [2] code-simplifier — 코드 품질 리뷰 (install? y/n)
+        [3] commit-commands — Git 커밋 워크플로우 (install? y/n)
 
-Customization happens later: as `/harnesskit:insights` detects usage patterns and error rates,
-it proposes project-specific skill/agent creation or customization via `/skill-builder`.
+      Review:
+        [4] code-review — PR 리뷰 자동화 (install? y/n)
+
+      Security:
+        [5] semgrep — 보안 취약점 감지 (install? y/n)
+
+      💡 More plugins: /plugin → Discover tab
+
+Install approved plugins: `/plugin install {plugin-name}@claude-plugins-official`
+
+Record installed plugins in `.harnesskit/config.json` → `installedPlugins` array.
+Record unmatched areas in `config.json` → `uncoveredAreas` array.
 
 ### 4. Summary
 
