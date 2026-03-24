@@ -71,5 +71,30 @@ check_file "$SKILLS/typecheck/SKILL.md" "typecheck/SKILL.md"
 check_file "$SKILLS/dev/SKILL.md" "dev/SKILL.md"
 
 echo ""
+echo "=== Marketplace recommendations ==="
+check_json "$TEMPLATES/marketplace-recommendations.json" "marketplace-recommendations.json"
+
+# Schema checks
+RECS_SCHEMA=$(if jq -e '.schemaVersion and .recommendations and .conditions' "$TEMPLATES/marketplace-recommendations.json" >/dev/null 2>&1; then echo "valid"; else echo "invalid"; fi)
+if [ "$RECS_SCHEMA" = "valid" ]; then
+  echo "  ✅ recommendations.json has required fields"
+  PASS=$((PASS + 1))
+else
+  echo "  ❌ recommendations.json missing required fields (schemaVersion, recommendations, conditions)"
+  FAIL=$((FAIL + 1))
+fi
+
+# Every recommendation has plugin, category, when, description
+RECS_ITEMS=$(jq '[.recommendations[] | select(.plugin and .category and .when and .description)] | length' "$TEMPLATES/marketplace-recommendations.json" 2>/dev/null || echo "0")
+RECS_TOTAL=$(jq '.recommendations | length' "$TEMPLATES/marketplace-recommendations.json" 2>/dev/null || echo "0")
+if [ "$RECS_ITEMS" = "$RECS_TOTAL" ] && [ "$RECS_TOTAL" != "0" ]; then
+  echo "  ✅ all $RECS_TOTAL recommendations have required fields"
+  PASS=$((PASS + 1))
+else
+  echo "  ❌ some recommendations missing fields ($RECS_ITEMS/$RECS_TOTAL valid)"
+  FAIL=$((FAIL + 1))
+fi
+
+echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ] || exit 1

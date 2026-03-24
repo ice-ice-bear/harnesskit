@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "lastUpdated": "2026-03-24",
+  "source": "https://github.com/anthropics/claude-plugins-official",
+  "recommendations": [
+    {
+      "plugin": "typescript-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:typescript",
+      "description": "TypeScript 코드 인텔리전스"
+    },
+    {
+      "plugin": "pyright-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:python",
+      "description": "Python 코드 인텔리전스"
+    },
+    {
+      "plugin": "gopls-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:go",
+      "description": "Go 코드 인텔리전스"
+    },
+    {
+      "plugin": "rust-analyzer-lsp@claude-plugins-official",
+      "category": "lsp",
+      "when": "language:rust",
+      "description": "Rust 코드 인텔리전스"
+    },
+    {
+      "plugin": "code-simplifier@claude-plugins-official",
+      "category": "general",
+      "when": "always",
+      "description": "코드 품질 리뷰 + 리팩토링"
+    },
+    {
+      "plugin": "commit-commands@claude-plugins-official",
+      "category": "general",
+      "when": "git",
+      "description": "Git 커밋 워크플로우"
+    },
+    {
+      "plugin": "code-review@claude-plugins-official",
+      "category": "review",
+      "when": "git",
+      "description": "PR 코드 리뷰 자동화"
+    },
+    {
+      "plugin": "pr-review-toolkit@claude-plugins-official",
+      "category": "review",
+      "when": "git",
+      "description": "PR 리뷰 전문 에이전트"
+    },
+    {
+      "plugin": "semgrep@claude-plugins-official",
+      "category": "security",
+      "when": "always",
+      "description": "보안 취약점 실시간 감지"
+    },
+    {
+      "plugin": "security-guidance@claude-plugins-official",
+      "category": "security",
+      "when": "api",
+      "description": "보안 가이드 hook"
+    },
+    {
+      "plugin": "github@claude-plugins-official",
+      "category": "integrations",
+      "when": "github_remote",
+      "description": "GitHub MCP 통합"
+    }
+  ],
+  "conditions": {
+    "always": "모든 프로젝트",
+    "git": "detected.json의 git == true",
+    "language:typescript": "detected.json의 language == typescript",
+    "language:python": "detected.json의 language == python",
+    "language:go": "detected.json의 language == go",
+    "language:rust": "detected.json의 language == rust",
+    "github_remote": "git remote -v에 github.com 포함",
+    "api": "framework가 fastapi, django, nextjs 중 하나"
+  }
+}
