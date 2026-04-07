@@ -54,18 +54,42 @@ Apply? (y/n/edit)
        1. Invoke `/skill-builder` with: detected.json + session-logs excerpts showing time-sink pattern + task descriptions
        2. Save generated agent.md to `.harnesskit/agents/{name}.md`
        3. Update `config.json` customAgents array: `{"name": "{name}", "file": ".harnesskit/agents/{name}.md", "createdAt": "{date}", "sourceProposal": "{id}", "type": "agent_creation"}`
+       4. Auto-register in CLAUDE.md:
+          - Read current CLAUDE.md
+          - If no "Custom Agents" or "Agent Team" section exists, append:
+            ```
+            ## Custom Agents
+            - {name}: .harnesskit/agents/{name}.md — {description}
+            ```
+          - If section exists, append new agent entry to it
+          - Verify CLAUDE.md stays under 60 lines; if exceeded, warn:
+            "⚠️ CLAUDE.md exceeds 60 lines. Consider moving agent registry to a separate file."
      - For hook creation (type=hook_creation):
        1. Save proposed shell script to `.harnesskit/hooks/{name}.sh`
        2. `chmod +x` the script
        3. Check `.claude/settings.json` for conflicting hooks at the same hook point with same purpose → if found, ask user to replace or coexist
        4. Append hook to `.claude/settings.json` at the specified hook point (end of array)
        5. Update `config.json` customHooks array: `{"name": "{name}", "file": ".harnesskit/hooks/{name}.sh", "hookPoint": "{point}", "createdAt": "{date}", "sourceProposal": "{id}"}`
+       6. Auto-register in CLAUDE.md:
+          - If no "Custom Hooks" section exists, append:
+            ```
+            ## Custom Hooks
+            - {name}: {hookPoint} — {description}
+            ```
+          - If section exists, append new hook entry
      - For review supplement (type=review_supplement):
        1. Invoke `/skill-builder` with: review feedback themes + CLAUDE.md conventions + detected.json
        2. Save generated skill to `.harnesskit/skills/project-review-rules.md`
        3. Add reference to CLAUDE.md
        4. Update `config.json`: reviewInternalization.stage = "supplement", supplementSince = "{date}"
        5. Update `config.json` customSkills array
+       6. Auto-register in CLAUDE.md:
+          - If no "Custom Skills" section exists, append:
+            ```
+            ## Custom Skills
+            - project-review-rules: .harnesskit/skills/project-review-rules.md
+            ```
+          - If section exists, append new skill entry
      - For review replace (type=review_replace):
        1. Confirm with user: "This will remove marketplace /review plugin. Continue?"
        2. Invoke `/skill-builder` to merge supplement + expanded rules into full review skill
