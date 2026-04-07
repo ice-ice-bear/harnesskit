@@ -1,11 +1,22 @@
 {
   "name": "harnesskit",
-  "version": "0.3.0",
-  "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
+  "version": "0.4.0",
+  "description": "Adaptive harness for vibe coders — detect, configure, observe, improve. Agent team architecture included.",
   "author": {
-    "name": "ice-ice-bear"
+    "name": "ice-ice-bear",
+    "url": "https://github.com/ice-ice-bear"
   },
+  "homepage": "https://github.com/ice-ice-bear/harnesskit",
   "repository": "https://github.com/ice-ice-bear/harnesskit",
   "license": "MIT",
-  "keywords": ["harness", "vibe-coding", "guardrails", "insights", "adaptive"]
+  "keywords": [
+    "harness",
+    "vibe-coding",
+    "guardrails",
+    "insights",
+    "adaptive",
+    "agent-team",
+    "orchestration",
+    "skill-architect"
+  ]
 }
