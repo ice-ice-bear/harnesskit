@@ -44,9 +44,17 @@ HarnessKit is a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) pl
 
 ## Install
 
-```bash
-/plugin marketplace add ice-ice-bear/harnesskit
-/plugin install harnesskit@harnesskit
+In Claude Code, open the plugin menu and add the marketplace, then install:
+
+```
+/plugin  →  Marketplaces  →  Add  →  ice-ice-bear/harnesskit
+/plugin  →  Discover  →  harnesskit  →  Install for you (user scope)
+```
+
+After installation, run `/reload-plugins` to activate. To update after new releases:
+
+```
+/plugin  →  Installed  →  harnesskit  →  Update now
 ```
 
 ## Quick Start
