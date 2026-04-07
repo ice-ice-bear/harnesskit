@@ -1,0 +1,69 @@
+{
+  "version": "1.0.0",
+  "features": [
+    {
+      "id": "feat-001",
+      "description": "Project tech stack auto-detection (language, framework, package manager, test, lint)",
+      "category": "detection",
+      "passes": true,
+      "priority": 1,
+      "source": "core"
+    },
+    {
+      "id": "feat-002",
+      "description": "Experience preset system (beginner/intermediate/advanced) with guardrails",
+      "category": "configuration",
+      "passes": true,
+      "priority": 2,
+      "source": "core"
+    },
+    {
+      "id": "feat-003",
+      "description": "Session lifecycle hooks (start briefing, end logging, guardrails)",
+      "category": "observation",
+      "passes": true,
+      "priority": 3,
+      "source": "core"
+    },
+    {
+      "id": "feat-004",
+      "description": "Insights engine — session analysis and improvement proposals",
+      "category": "improvement",
+      "passes": true,
+      "priority": 4,
+      "source": "core"
+    },
+    {
+      "id": "feat-005",
+      "description": "Marketplace plugin discovery and recommendation",
+      "category": "toolkit",
+      "passes": true,
+      "priority": 5,
+      "source": "core"
+    },
+    {
+      "id": "feat-006",
+      "description": "Agent team architecture design with 6 orchestration patterns",
+      "category": "architecture",
+      "passes": true,
+      "priority": 6,
+      "source": "competitive-analysis"
+    },
+    {
+      "id": "feat-007",
+      "description": "CLAUDE.md auto-registration for custom agents/hooks/skills",
+      "category": "improvement",
+      "passes": true,
+      "priority": 7,
+      "source": "competitive-analysis"
+    },
+    {
+      "id": "feat-008",
+      "description": "Benchmarking framework — with-harness vs baseline quality measurement",
+      "category": "quality",
+      "passes": false,
+      "priority": 8,
+      "source": "competitive-analysis"
+    }
+  ]
+}
