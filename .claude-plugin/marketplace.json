@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
-    "version": "0.2.0"
+    "version": "0.4.0"
   },
   "plugins": [
     {
       "name": "harnesskit",
       "source": "./",
       "description": "Adaptive harness for vibe coders — detect, configure, observe, improve",
-      "version": "0.2.0",
+      "version": "0.4.0",
       "author": {
         "name": "ice-ice-bear"
       },
