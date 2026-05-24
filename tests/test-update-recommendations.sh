@@ -25,7 +25,7 @@ check "script is executable" "$([ -x "$SCRIPT" ] && echo yes || echo no)" "yes"
 
 echo ""
 echo "=== Output file schema (existing) ==="
-check "has schemaVersion" "$(jq -r '.schemaVersion' "$RECS" 2>/dev/null)" "1.0"
+check "has schemaVersion" "$(jq -r '.schemaVersion' "$RECS" 2>/dev/null)" "1.1"
 check "has recommendations array" "$(jq '.recommendations | type' "$RECS" 2>/dev/null)" '"array"'
 check "has conditions object" "$(jq '.conditions | type' "$RECS" 2>/dev/null)" '"object"'
 check "has lastUpdated" "$(jq -e '.lastUpdated' "$RECS" >/dev/null 2>&1 && echo yes || echo no)" "yes"

@@ -2,6 +2,12 @@
 # session-end.sh — Stop hook: save session log, update failures, detect patterns
 set -euo pipefail
 
+# Require jq — degrade gracefully if missing (don't crash Claude session)
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ℹ️  HarnessKit: jq not installed — session logging skipped (install: apt/brew install jq)" >&2
+  exit 0
+fi
+
 # --- Collect data ---
 SESSION_ID=$(date +"%Y-%m-%d-%H%M")
 STARTED_AT=""

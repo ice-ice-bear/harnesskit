@@ -3,6 +3,10 @@
 # Only activates for beginner preset
 set -euo pipefail
 
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name' 2>/dev/null || echo "")
 [ "$TOOL" != "Bash" ] && exit 0
@@ -19,15 +23,17 @@ PLUGIN_DIR="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ENABLED=$(jq -r '.devHooks.preCommitTest // false' "$PLUGIN_DIR/templates/presets/$PRESET.json" 2>/dev/null || echo "false")
 [ "$ENABLED" != "true" ] && exit 0
 
-# Detect test command
+# Detect test command and workspace
 DETECTED=".harnesskit/detected.json"
 [ -f "$DETECTED" ] || exit 0
 TEST_FW=$(jq -r '.testFramework' "$DETECTED" 2>/dev/null || echo "unknown")
+JS_WS=$(jq -r '.workspaces.js // "."' "$DETECTED" 2>/dev/null || echo ".")
+PY_WS=$(jq -r '.workspaces.python // "."' "$DETECTED" 2>/dev/null || echo ".")
 
 echo "🧪 HarnessKit: Running tests before commit..." >&2
 case "$TEST_FW" in
-  vitest)  npx vitest run --reporter=verbose 2>&1 | tail -5 ;;
-  jest)    npx jest --verbose 2>&1 | tail -5 ;;
-  pytest)  pytest -v 2>&1 | tail -5 ;;
-  *)       echo "⚠️  Unknown test framework, skipping pre-commit test" >&2 ;;
+  vitest*)  (cd "$JS_WS" && npx --no-install vitest run --reporter=verbose) 2>&1 | tail -5 ;;
+  jest*)    (cd "$JS_WS" && npx --no-install jest --verbose) 2>&1 | tail -5 ;;
+  pytest*)  (cd "$PY_WS" && pytest -v) 2>&1 | tail -5 ;;
+  *)        echo "⚠️  Unknown test framework, skipping pre-commit test" >&2 ;;
 esac

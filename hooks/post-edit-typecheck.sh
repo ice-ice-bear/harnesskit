@@ -2,6 +2,10 @@
 # post-edit-typecheck.sh — PostToolUse hook: typecheck on .ts/.tsx changes
 set -euo pipefail
 
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name' 2>/dev/null || echo "")
 
@@ -21,8 +25,13 @@ ENABLED=$(jq -r '.devHooks.postEditTypecheck // true' "$PLUGIN_DIR/templates/pre
 
 FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path' 2>/dev/null || echo "")
 
+# Find the JS/TS workspace root so we typecheck from the right tsconfig
+JS_WS="."
+[ -f ".harnesskit/detected.json" ] && \
+  JS_WS=$(jq -r '.workspaces.js // "."' .harnesskit/detected.json 2>/dev/null || echo ".")
+
 case "$FILE" in
   *.ts|*.tsx)
-    npx tsc --noEmit 2>&1 | head -20 || true
+    (cd "$JS_WS" 2>/dev/null && npx --no-install tsc --noEmit) 2>&1 | head -20 || true
     ;;
 esac

@@ -3,6 +3,11 @@
 # Exit 2 = BLOCK (tool call rejected), Exit 0 = PASS/WARN
 set -euo pipefail
 
+# Without jq we cannot parse tool_name → fail open (allow), don't crash Claude
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name' 2>/dev/null || echo "")
 [ -z "$TOOL" ] && exit 0

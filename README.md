@@ -4,7 +4,7 @@
 
 **Adaptive harness for vibe coders — detect, configure, observe, improve**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)]()
+[![Version](https://img.shields.io/badge/version-0.4.1-blue)]()
 [![Tests](https://img.shields.io/badge/tests-89%20passing-green)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow)]()
 

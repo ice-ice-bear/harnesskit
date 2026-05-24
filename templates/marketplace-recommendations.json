@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0",
-  "lastUpdated": "2026-03-24",
+  "schemaVersion": "1.1",
+  "lastUpdated": "2026-05-24",
   "source": "https://github.com/anthropics/claude-plugins-official",
   "recommendations": [
     {
@@ -55,7 +55,9 @@
       "plugin": "semgrep@claude-plugins-official",
       "category": "security",
       "when": "always",
-      "description": "보안 취약점 실시간 감지"
+      "description": "보안 취약점 실시간 감지",
+      "requiresBinary": "semgrep",
+      "installHint": "pip install semgrep  /  brew install semgrep"
     },
     {
       "plugin": "security-guidance@claude-plugins-official",
@@ -67,7 +69,9 @@
       "plugin": "github@claude-plugins-official",
       "category": "integrations",
       "when": "github_remote",
-      "description": "GitHub MCP 통합"
+      "description": "GitHub MCP 통합",
+      "requiresBinary": "gh",
+      "installHint": "https://cli.github.com/"
     }
   ],
   "conditions": {
@@ -79,5 +83,8 @@
     "language:rust": "detected.json의 language == rust",
     "github_remote": "git remote -v에 github.com 포함",
     "api": "framework가 fastapi, django, nextjs 중 하나"
+  },
+  "notes": {
+    "requiresBinary": "If set, init.md MUST run `command -v <binary>` and warn the user before listing this plugin as 'install' eligible. If the binary is missing, mark the plugin with ⚠️ and include installHint inline."
   }
 }

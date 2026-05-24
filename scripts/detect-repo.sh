@@ -22,6 +22,24 @@ find_file() {
   return 1
 }
 
+# Return the workspace subdir containing $1 (relative to PROJECT_DIR), or "." if not found.
+# Always returns 0 so `set -e` callers don't die on a missing manifest.
+find_workspace() {
+  local filename="$1"
+  if [ -f "$PROJECT_DIR/$filename" ]; then
+    echo "."
+    return 0
+  fi
+  for sub in frontend client app web backend server api src; do
+    if [ -f "$PROJECT_DIR/$sub/$filename" ]; then
+      echo "$sub"
+      return 0
+    fi
+  done
+  echo "."
+  return 0
+}
+
 grep_file() {
   local pattern="$1" filename="$2"
   local found
@@ -195,6 +213,11 @@ existingHarnesskit=false
 [ -f "$PROJECT_DIR/progress/claude-progress.txt" ] && existingProgress=true
 [ -d "$PROJECT_DIR/.harnesskit" ] && existingHarnesskit=true
 
+# --- Workspace roots (where hooks should run npx/tsc) ---
+jsWorkspace=$(find_workspace "package.json")
+pyWorkspace=$(find_workspace "pyproject.toml")
+[ "$pyWorkspace" = "." ] && [ ! -f "$PROJECT_DIR/pyproject.toml" ] && pyWorkspace=$(find_workspace "requirements.txt")
+
 # --- Output ---
 cat <<EOF
 {
@@ -205,6 +228,10 @@ cat <<EOF
   "linter": "$linter",
   "monorepo": $monorepo,
   "git": $gitInitialized,
+  "workspaces": {
+    "js": "$jsWorkspace",
+    "python": "$pyWorkspace"
+  },
   "existingHarness": {
     "claudeMd": $existingClaudeMd,
     "featureList": $existingFeatureList,

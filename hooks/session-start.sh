@@ -3,7 +3,13 @@
 # Zero token cost — all file reads, no Claude calls
 set -euo pipefail
 
-# Record start time
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ℹ️  HarnessKit: jq not installed — briefing skipped (install: apt/brew install jq)" >&2
+  exit 0
+fi
+
+# Record start time (ensure dir exists so first-run doesn't silently drop it)
+mkdir -p .harnesskit 2>/dev/null || true
 date -u +"%Y-%m-%dT%H:%M:%SZ" > .harnesskit/session-start-time.txt 2>/dev/null || true
 
 # Load preset

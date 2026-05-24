@@ -4,7 +4,7 @@
 
 **바이브 코더를 위한 적응형 하네스 — 감지, 설정, 관찰, 개선**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)]()
+[![Version](https://img.shields.io/badge/version-0.4.1-blue)]()
 [![Tests](https://img.shields.io/badge/tests-89%20passing-green)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow)]()
 

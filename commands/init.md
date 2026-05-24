@@ -60,7 +60,37 @@ Hook commands use `${CLAUDE_PLUGIN_ROOT}` which is auto-substituted by Claude Co
 - PostToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-lint.sh`, `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-typecheck.sh` (if preset enables)
 - PreToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-test.sh` (if preset enables)
 
-Preserve any existing hooks (append to arrays).
+**Preserving existing hooks — but validate first:**
+
+For each pre-existing hook entry (not from HarnessKit), extract the leading path/script and check whether it resolves to an existing file. Two common patterns:
+
+```
+"command": "/abs/path/to/foo.sh"                 → check -f /abs/path/to/foo.sh
+"command": "sh -c 'node \"$HOME/.claude/x.mjs\"'" → expand $HOME, check -f
+"command": "\"$CLAUDE_PROJECT_DIR/.claude/foo.sh\"" → expand to cwd, check -f
+```
+
+- **Resolvable** → keep (preserve user's intent)
+- **Unresolvable** → exclude from merged output AND report to the user:
+
+```
+⚠️  Skipped 2 broken hooks from existing settings.json (file not found):
+   - PreToolUse: $HOME/.claude/hooks/selective-auto-permission.mjs
+   - PreToolUse[Skill]: $CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh
+   Restore them manually after fixing the paths, or leave them removed.
+```
+
+Never silently drop entries you can't classify — if in doubt, keep and warn.
+
+**Pre-flight: jq availability**
+
+Before writing settings.json, check `command -v jq`. If jq is not on PATH, append this warning to the summary:
+
+```
+⚠️  jq not found on PATH. HarnessKit hooks degrade gracefully (exit 0) but
+   lose all observation/guardrail functionality until jq is installed.
+   Install: apt install jq  /  brew install jq  /  choco install jq
+```
 
 ### 3. Marketplace Plugin Discovery ("Curate, Don't Reinvent")
 
@@ -80,6 +110,14 @@ Read the verified recommendations from `${CLAUDE_PLUGIN_ROOT}/templates/marketpl
    - code-simplifier@claude-plugins-official (always)
    - commit-commands@claude-plugins-official (if git)
    - code-review@claude-plugins-official (if git)
+
+**Binary prerequisite check:**
+
+For each matched recommendation with a `requiresBinary` field, run `command -v <binary>`:
+- Binary present → show normally
+- Binary missing → prefix with ⚠️ and append `(requires <binary> — <installHint>)`
+
+This prevents users from installing plugins (like `semgrep@`) whose own SessionStart hooks will throw `command not found` errors.
 
 **Always append:**
 "더 많은 플러그인은 `/plugin` → Discover 탭에서 탐색하세요."
