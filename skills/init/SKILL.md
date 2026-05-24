@@ -54,12 +54,25 @@ Based on detected framework and preset, generate:
 
 Merge HarnessKit hooks into existing `.claude/settings.json`:
 
-Hook commands use `${CLAUDE_PLUGIN_ROOT}` which is auto-substituted by Claude Code:
+**CRITICAL — store the literal string `${CLAUDE_PLUGIN_ROOT}/hooks/...`, do NOT expand it.**
+
+Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` at hook invocation time to point at the *currently active* plugin version's cache directory. If you expand it yourself and write an absolute path like `/home/user/.claude/plugins/cache/harnesskit/harnesskit/0.4.2/hooks/foo.sh`, the path will become stale on every `/plugin → Update`, silently keeping the user on the old hook code. This is a real regression that has shipped to users before — do not repeat it.
+
+The exact strings to write:
 - SessionStart: `${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh`
 - PreToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/guardrails.sh`
 - Stop: `${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh`
 - PostToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-lint.sh`, `${CLAUDE_PLUGIN_ROOT}/hooks/post-edit-typecheck.sh` (if preset enables)
 - PreToolUse: `${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-test.sh` (if preset enables)
+
+**Auto-migration of legacy paths:**
+
+If pre-existing settings.json entries match the pattern `.*/cache/harnesskit/harnesskit/[0-9]+\.[0-9]+\.[0-9]+/hooks/(.+)`, treat them as stale HarnessKit hooks from a previous version and replace with `${CLAUDE_PLUGIN_ROOT}/hooks/$1` rather than preserving the absolute path. Report the migration in the summary:
+
+```
+🔄 Migrated 5 HarnessKit hook paths to ${CLAUDE_PLUGIN_ROOT} (was hardcoded to 0.4.1).
+   Future plugin updates will now apply automatically without re-running setup.
+```
 
 **Preserving existing hooks — but validate first:**
 

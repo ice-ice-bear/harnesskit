@@ -1,6 +1,6 @@
 {
   "name": "harnesskit",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Adaptive harness for vibe coders — detect, configure, observe, improve. Agent team architecture included.",
   "author": {
     "name": "ice-ice-bear",
