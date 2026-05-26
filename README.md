@@ -4,8 +4,8 @@
 
 **Adaptive harness for vibe coders — detect, configure, observe, improve**
 
-[![Version](https://img.shields.io/badge/version-0.4.2-blue)]()
-[![Tests](https://img.shields.io/badge/tests-89%20passing-green)]()
+[![Version](https://img.shields.io/badge/version-0.4.3-blue)]()
+[![Tests](https://img.shields.io/badge/tests-122%20passing-green)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow)]()
 
 [한국어](README.ko.md) | English
@@ -39,7 +39,7 @@ HarnessKit is a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) pl
 |-------|-------------|-----|
 | **Detect** | Auto-detects repo language, framework, test framework, linter, package manager | Zero-token shell script — no LLM calls |
 | **Configure** | Applies one of 3 presets (beginner / intermediate / advanced) | Controls guardrails depth, briefing detail, dev hooks |
-| **Observe** | Tracks errors, tool usage, plugin effectiveness per session | Shell-based hooks (session-start, guardrails, session-end) |
+| **Observe** | Tracks errors, tool usage, plugin effectiveness per session | Shell-based hooks (session-start, guardrails, post-edit-lint, post-edit-typecheck, session-end) |
 | **Improve** | Analyzes session data, proposes skill/agent/hook/rule improvements | `/harnesskit:insights` analyzes, `/harnesskit:apply` executes |
 
 ## Install
@@ -110,7 +110,7 @@ Choose a preset during `/harnesskit:setup` based on your comfort level:
 ### Design Principles
 
 - **Marketplace First**: Uses existing Claude Code plugins before creating custom tools. Only customizes when session data shows a gap.
-- **Zero-Token Hooks**: All observation hooks (`session-start`, `guardrails`, `session-end`) run as bash + jq scripts. They cost zero LLM tokens.
+- **Zero-Token Hooks**: All observation hooks (`session-start`, `guardrails`, `post-edit-lint`, `post-edit-typecheck`, `session-end`) run as bash + jq scripts. They cost zero LLM tokens.
 - **Bible**: A curated set of harness engineering principles, referenced by all skills for consistency.
 
 ### Subsystems
@@ -125,14 +125,15 @@ Choose a preset during `/harnesskit:setup` based on your comfort level:
 ```
 HarnessKit/
 ├── .claude-plugin/
-│   ├── plugin.json        # Plugin manifest (v0.2.0)
+│   ├── plugin.json        # Plugin manifest
 │   └── marketplace.json   # Marketplace catalog
 ├── skills/                # 11 skill definitions
 ├── agents/                # Orchestrator agent
 ├── hooks/                 # Session hooks (bash + jq)
+│   └── hooks.json         # Hook registration (read by Claude Code)
 ├── scripts/               # Detection & utility scripts
 ├── templates/             # Config templates, presets, bible
-├── tests/                 # 89 tests across 8 suites
+├── tests/                 # 122 tests across 10 suites
 ├── docs/                  # Design specs, plans, research
 ├── README.md
 ├── README.ko.md
@@ -188,7 +189,7 @@ Contributions are welcome.
 git clone https://github.com/ice-ice-bear/harnesskit.git
 cd harnesskit
 
-# Run all tests (89 tests across 8 suites)
+# Run all tests (122 tests across 10 suites)
 for t in tests/test-*.sh; do bash "$t"; done
 ```
 

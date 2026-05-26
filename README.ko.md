@@ -4,8 +4,8 @@
 
 **바이브 코더를 위한 적응형 하네스 — 감지, 설정, 관찰, 개선**
 
-[![Version](https://img.shields.io/badge/version-0.4.2-blue)]()
-[![Tests](https://img.shields.io/badge/tests-89%20passing-green)]()
+[![Version](https://img.shields.io/badge/version-0.4.3-blue)]()
+[![Tests](https://img.shields.io/badge/tests-122%20passing-green)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow)]()
 
 English | [한국어](README.ko.md)
@@ -39,7 +39,7 @@ HarnessKit은 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 플�
 |------|------|------|
 | **감지** | 레포의 언어, 프레임워크, 테스트 프레임워크, 린터, 패키지 매니저 자동 감지 | 제로 토큰 셸 스크립트 — LLM 호출 없음 |
 | **설정** | 3가지 프리셋 중 하나 적용 (초급 / 중급 / 고급) | 가드레일 강도, 브리핑 상세도, 개발 훅 제어 |
-| **관찰** | 세션별 에러, 도구 사용량, 플러그인 효과 추적 | 셸 기반 훅 (session-start, guardrails, session-end) |
+| **관찰** | 세션별 에러, 도구 사용량, 플러그인 효과 추적 | 셸 기반 훅 (session-start, guardrails, post-edit-lint, post-edit-typecheck, session-end) |
 | **개선** | 세션 데이터 분석, 스킬/에이전트/훅/규칙 개선안 제안 | `/harnesskit:insights`로 분석, `/harnesskit:apply`로 실행 |
 
 ## 설치
@@ -102,7 +102,7 @@ HarnessKit은 슬래시 명령어로 사용할 수 있는 11개의 스킬을 제
 ### 설계 원칙
 
 - **마켓플레이스 우선**: 커스텀 도구를 만들기 전에 기존 Claude Code 플러그인을 먼저 사용합니다. 세션 데이터에서 갭이 확인될 때만 커스터마이즈합니다.
-- **제로 토큰 훅**: 모든 관찰 훅(`session-start`, `guardrails`, `session-end`)은 bash + jq 스크립트로 실행됩니다. LLM 토큰 비용이 없습니다.
+- **제로 토큰 훅**: 모든 관찰 훅(`session-start`, `guardrails`, `post-edit-lint`, `post-edit-typecheck`, `session-end`)은 bash + jq 스크립트로 실행됩니다. LLM 토큰 비용이 없습니다.
 - **바이블**: 모든 스킬이 일관성을 위해 참조하는, 엄선된 하네스 엔지니어링 원칙 모음입니다.
 
 ### 서브시스템
@@ -117,14 +117,15 @@ HarnessKit은 슬래시 명령어로 사용할 수 있는 11개의 스킬을 제
 ```
 HarnessKit/
 ├── .claude-plugin/
-│   ├── plugin.json        # 플러그인 매니페스트 (v0.2.0)
+│   ├── plugin.json        # 플러그인 매니페스트
 │   └── marketplace.json   # 마켓플레이스 카탈로그
 ├── skills/                # 11개 스킬 정의
 ├── agents/                # 오케스트레이터 에이전트
 ├── hooks/                 # 세션 훅 (bash + jq)
+│   └── hooks.json         # 훅 등록 (Claude Code가 읽음)
 ├── scripts/               # 감지 및 유틸리티 스크립트
 ├── templates/             # 설정 템플릿, 프리셋, 바이블
-├── tests/                 # 8개 스위트, 89개 테스트
+├── tests/                 # 10개 스위트, 122개 테스트
 ├── docs/                  # 설계 명세, 계획, 리서치
 ├── README.md
 ├── README.ko.md
@@ -180,7 +181,7 @@ HarnessKit/
 git clone https://github.com/ice-ice-bear/harnesskit.git
 cd harnesskit
 
-# 전체 테스트 실행 (8개 스위트, 89개 테스트)
+# 전체 테스트 실행 (10개 스위트, 122개 테스트)
 for t in tests/test-*.sh; do bash "$t"; done
 ```
 
