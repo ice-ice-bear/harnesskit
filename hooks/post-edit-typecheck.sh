@@ -32,6 +32,7 @@ JS_WS="."
 
 case "$FILE" in
   *.ts|*.tsx)
+    [ -f "$JS_WS/tsconfig.json" ] || exit 0
     (cd "$JS_WS" 2>/dev/null && npx --no-install tsc --noEmit) 2>&1 | head -20 || true
     ;;
 esac
