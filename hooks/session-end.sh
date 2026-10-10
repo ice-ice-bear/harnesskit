@@ -21,7 +21,12 @@ CURRENT_FEATURE=""
 
 FILES_CHANGED="[]"
 if [ -d ".git" ]; then
-  FILES_CHANGED=$(git diff --name-only HEAD 2>/dev/null | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null || echo "[]")
+  # Fallback must REPLACE, not append: under pipefail a failing `git diff` still lets jq
+  # print "[]", and `|| echo "[]"` would add a second value ("[]\n[]") that --argjson rejects.
+  FILES_CHANGED=$(git diff --name-only HEAD 2>/dev/null | jq -R -s 'split("\n") | map(select(. != ""))' 2>/dev/null) || {
+    FILES_CHANGED="[]"
+    echo "ℹ️  HarnessKit: git diff unavailable — filesChanged recorded as []" >&2
+  }
 fi
 
 # --- Parse scratch file ---
